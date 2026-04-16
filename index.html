@@ -8,6 +8,8 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
     body{background:#f3f4f6;}
@@ -47,8 +49,22 @@ function combinations(arr,k){
   return r;
 }
 function uid(){return Math.random().toString(36).slice(2,10);}
-const save=(k,v)=>{try{localStorage.setItem('cp_'+k,JSON.stringify(v));}catch(_){}};
-const load=(k,fb)=>{try{const s=localStorage.getItem('cp_'+k);return s?JSON.parse(s):fb;}catch(_){return fb;}};
+// ─── FIREBASE CONFIG ── paste your config here ───────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyB3F1G1cJWZllc_Vr_L49_42sXRQda3RkE",
+  authDomain:        "club-paw-tournament.firebaseapp.com",
+  databaseURL:       "https://club-paw-tournament-default-rtdb.firebaseio.com",
+  projectId:         "club-paw-tournament",
+  storageBucket:     "club-paw-tournament.firebasestorage.app",
+  messagingSenderId: "372778383531",
+  appId:             "1:372778383531:web:0f75a2732e57429b485fee"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dbRef = k => db.ref('clubpaw/' + k);
+// ─────────────────────────────────────────────────────────────────────────────
+
+const save=(k,v)=>{try{dbRef(k).set(v);}catch(_){}};
 
 /* VALIDATION
    Age gap rules (experience-dependent):
@@ -913,9 +929,10 @@ function ResetPage({setWrestlers,setGroups,setUnassigned,setMatches,setNumMats,s
     setUnassigned([]);
     setMatches([]);
     setNumMats(2);
-    ['wrestlers','groups','unassigned','matches','numMats'].forEach(k=>{
-      try{localStorage.removeItem('cp_'+k);}catch(_){}
-    });
+    // Clear all data in Firebase
+    try{
+      db.ref('clubpaw').set({wrestlers:[],groups:[],unassigned:[],matches:[],numMats:2});
+    }catch(_){}
     setStep('done');
   }
 
@@ -988,17 +1005,47 @@ function ResetPage({setWrestlers,setGroups,setUnassigned,setMatches,setNumMats,s
 
 /* ROOT */
 function App(){
+  const [dbReady,setDbReady]=useState(false);
   const [page,setPage]=useState('upload');
-  const [wrestlers,setWrestlers]=useState(()=>load('wrestlers',[]));
-  const [groups,setGroups]=useState(()=>load('groups',[]));
-  const [unassigned,setUnassigned]=useState(()=>load('unassigned',[]));
-  const [matches,setMatches]=useState(()=>load('matches',[]));
-  const [numMats,setNumMats]=useState(()=>load('numMats',2));
-  useEffect(()=>{ save('wrestlers',wrestlers); },[wrestlers]);
-  useEffect(()=>{ save('groups',groups); },[groups]);
-  useEffect(()=>{ save('unassigned',unassigned); },[unassigned]);
-  useEffect(()=>{ save('matches',matches); },[matches]);
-  useEffect(()=>{ save('numMats',numMats); },[numMats]);
+  const [wrestlers,setWrestlers]=useState([]);
+  const [groups,setGroups]=useState([]);
+  const [unassigned,setUnassigned]=useState([]);
+  const [matches,setMatches]=useState([]);
+  const [numMats,setNumMats]=useState(2);
+
+  // Load all data from Firebase once on mount
+  useEffect(()=>{
+    db.ref('clubpaw').once('value').then(snap=>{
+      const d=snap.val()||{};
+      setWrestlers(d.wrestlers||[]);
+      setGroups(d.groups||[]);
+      setUnassigned(d.unassigned||[]);
+      setMatches(d.matches||[]);
+      setNumMats(d.numMats||2);
+      setDbReady(true);
+    }).catch(()=>setDbReady(true));
+  },[]);
+
+  // Sync state to Firebase after initial load
+  useEffect(()=>{ if(dbReady) save('wrestlers',wrestlers); },[wrestlers]);
+  useEffect(()=>{ if(dbReady) save('groups',groups); },[groups]);
+  useEffect(()=>{ if(dbReady) save('unassigned',unassigned); },[unassigned]);
+  useEffect(()=>{ if(dbReady) save('matches',matches); },[matches]);
+  useEffect(()=>{ if(dbReady) save('numMats',numMats); },[numMats]);
+
+  if(!dbReady) return(
+    <div className="min-h-screen flex items-center justify-center" style={{background:'#f3f4f6'}}>
+      <div className="text-center bg-white rounded-2xl shadow p-12">
+        <div className="text-5xl mb-4">🐾</div>
+        <p className="font-bold text-gray-700 text-lg mb-1">Loading tournament data...</p>
+        <p className="text-gray-400 text-sm">Connecting to Firebase</p>
+        <div className="mt-4 h-1.5 w-48 bg-gray-100 rounded-full mx-auto overflow-hidden">
+          <div className="h-1.5 rounded-full animate-pulse" style={{width:'60%',background:'#C9A227'}}/>
+        </div>
+      </div>
+    </div>
+  );
+
   return(
     <div className="min-h-screen" style={{background:'#f3f4f6'}}>
       <Nav page={page} setPage={setPage} wrestlers={wrestlers} groups={groups}/>
