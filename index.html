@@ -451,59 +451,141 @@ function GroupsPage({wrestlers,groups,setGroups,unassigned,setUnassigned,setMatc
 
 /* PAGE 3 — SCHEDULE */
 function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
+  const [moving,setMoving]=useState(null); // {matchId, fromMat}
+
+  const allMats=[...Array(numMats)].map((_,i)=>i+1);
   const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
-  const mats=[...new Set(matches.map(m=>m.mat))].sort((a,b)=>a-b);
   const done=matches.filter(m=>m.winner).length;
   const winLabel=m=>{if(!m.winner)return null;const n=m.winner===m.w1.id?m.w1.name:m.w2.name;return `${n} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;};
+
+  // Move ALL matches belonging to the same group to the target mat
+  function moveGroupToMat(groupId, toMat){
+    setMatches(matches.map(m=>m.groupId===groupId?{...m,mat:toMat}:m));
+    setMoving(null);
+  }
+
+  // Which group is being moved
+  const movingMatch = moving ? matches.find(m=>m.id===moving.matchId) : null;
+
   return(
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex items-center gap-4 mb-5 flex-wrap">
         <h1 className="text-2xl font-bold" style={{color:'#111'}}>③ Match Schedule</h1>
         <div className="flex items-center gap-2 bg-white rounded-xl shadow px-3 py-2">
           <label className="text-sm font-medium text-gray-600">Mats:</label>
-          <select value={numMats} onChange={e=>setNumMats(parseInt(e.target.value))} className="border-0 text-sm font-bold focus:outline-none bg-transparent">
+          <select value={numMats} onChange={e=>{setNumMats(parseInt(e.target.value));setMoving(null);}} className="border-0 text-sm font-bold focus:outline-none bg-transparent">
             {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-        <button onClick={()=>setMatches(generateSchedule(groups,numMats))} disabled={groups.length===0} className="cp-btn text-sm shadow">📋 Generate Schedule</button>
+        <button onClick={()=>{setMatches(generateSchedule(groups,numMats));setMoving(null);}} disabled={groups.length===0} className="cp-btn text-sm shadow">📋 Generate Schedule</button>
         {matches.length>0&&<span className="text-sm text-gray-500 ml-auto">{done}/{matches.length} completed</span>}
       </div>
+
       {matches.length===0?(
         <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">📋</div>{groups.length===0?'Create groups first (Step ②).':'Click Generate Schedule.'}</div>
       ):(
-        rounds.map(round=>(
-          <div key={round} className="mb-7">
-            <div className="flex items-center gap-3 mb-3">
-              <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>Round {round}</h2>
-              <span className="text-sm text-gray-400">{matches.filter(m=>m.round===round&&m.winner).length} / {matches.filter(m=>m.round===round).length} done</span>
+        <>
+          {/* Moving banner */}
+          {moving&&movingMatch&&(
+            <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mb-5 flex items-center justify-between flex-wrap gap-2">
+              <div className="text-sm text-yellow-800">
+                <strong>Moving Group {movingMatch.groupLabel}</strong> — click a mat column to reassign all its matches there
+              </div>
+              <button onClick={()=>setMoving(null)} className="text-yellow-900 font-bold underline text-sm">✕ Cancel</button>
             </div>
-            <div className={`grid gap-4 ${numMats>1?'md:grid-cols-2':'grid-cols-1'}`}>
-              {mats.map(mat=>{
-                const mm=matches.filter(m=>m.round===round&&m.mat===mat);
-                if(!mm.length)return null;
-                return(
-                  <div key={mat} className="bg-white rounded-2xl shadow p-4">
-                    <div className="mb-3"><span className="text-white font-bold px-3 py-1 rounded-lg text-sm" style={{background:'#111'}}>Mat {mat}</span></div>
-                    <div className="space-y-2">
-                      {mm.map(m=>(
-                        <div key={m.id} className={`flex flex-col px-3 py-2.5 rounded-xl text-sm ${m.winner?'bg-yellow-50':'bg-gray-50'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
-                            <span className={`font-medium flex-1 ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
-                            <span className="text-gray-300 font-bold text-xs">VS</span>
-                            <span className={`font-medium flex-1 text-right ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
-                            {m.winner?<span className="text-green-500 text-xs shrink-0">✓</span>:<span className="text-gray-300 text-xs">—</span>}
-                          </div>
-                          {m.winner&&<div className="text-xs mt-1 cp-gold-text">🏆 {winLabel(m)}</div>}
-                        </div>
-                      ))}
-                    </div>
+          )}
+
+          {/* Side-by-side mat columns */}
+          <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
+            {allMats.map(mat=>{
+              const matMatchCount=matches.filter(m=>m.mat===mat).length;
+              const matDone=matches.filter(m=>m.mat===mat&&m.winner).length;
+              const isDropTarget=moving&&movingMatch&&movingMatch.mat!==mat;
+
+              return(
+                <div key={mat}
+                  onClick={()=>isDropTarget&&moveGroupToMat(movingMatch.groupId,mat)}
+                  className={`flex-shrink-0 rounded-2xl overflow-hidden shadow-lg transition-all ${
+                    isDropTarget
+                      ? 'ring-4 ring-yellow-400 cursor-pointer scale-[1.01]'
+                      : ''
+                  }`}
+                  style={{minWidth:300,width:300,background:'#f8f8f8',border:isDropTarget?'2px solid #C9A227':'2px solid #e5e7eb'}}>
+
+                  {/* Mat header */}
+                  <div className="text-white text-center py-3 px-4 relative" style={{background:'#111'}}>
+                    <div className="font-black text-xl tracking-wide">Mat {mat}</div>
+                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matMatchCount} done</div>
+                    {isDropTarget&&(
+                      <div className="absolute inset-0 flex items-center justify-center rounded-t-2xl" style={{background:'rgba(201,162,39,0.15)'}}>
+                        <span className="font-black text-yellow-400 text-base">↓ Move here</span>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Rounds within mat */}
+                  <div className="p-3">
+                    {rounds.map(round=>{
+                      const mm=matches.filter(m=>m.round===round&&m.mat===mat);
+                      if(!mm.length)return null;
+                      const rDone=mm.filter(m=>m.winner).length;
+                      return(
+                        <div key={round} className="mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-xs text-white px-3 py-1 rounded-full" style={{background:'#333'}}>Round {round}</span>
+                            <span className="text-xs text-gray-400">{rDone}/{mm.length}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {mm.map(m=>{
+                              const isBeingMoved=moving?.matchId===m.id||
+                                (movingMatch&&movingMatch.groupId===m.groupId);
+                              return(
+                                <div key={m.id}
+                                  className={`px-3 py-2.5 rounded-xl text-sm border-2 transition-all ${
+                                    isBeingMoved
+                                      ? 'border-yellow-400 bg-yellow-50'
+                                      : m.winner
+                                      ? 'bg-green-50 border-transparent'
+                                      : 'bg-white border-gray-100 shadow-sm'
+                                  }`}>
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
+                                    {/* Move button — moves the whole group */}
+                                    {!moving&&(
+                                      <button
+                                        onClick={e=>{e.stopPropagation();setMoving({matchId:m.id,fromMat:m.mat});}}
+                                        title="Move group to another mat"
+                                        className="ml-auto text-xs px-2 py-0.5 rounded-lg font-semibold border transition-all hover:border-yellow-400 hover:text-yellow-700"
+                                        style={{color:'#999',borderColor:'#ddd',background:'#fafafa'}}>
+                                        ↔ Move
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
+                                    <span className="text-gray-300 font-bold shrink-0">vs</span>
+                                    <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
+                                    {m.winner?<span className="text-green-500 shrink-0 ml-1">✓</span>:<span className="text-gray-300 shrink-0 ml-1">—</span>}
+                                  </div>
+                                  {m.winner&&<div className="text-xs mt-1 cp-gold-text">🏆 {winLabel(m)}</div>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {matMatchCount===0&&(
+                      <div className={`text-center text-xs py-8 rounded-xl ${isDropTarget?'text-yellow-600 font-semibold':'text-gray-400'}`}>
+                        {isDropTarget?'↓ Drop group here':'No matches assigned'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))
+        </>
       )}
     </div>
   );
