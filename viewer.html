@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Club Paw — Tournament Viewer</title>
+  <title>Club PAW — Tournament Viewer</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,17 +23,19 @@
     .badge-a{background:#fee2e2;color:#991b1b;}
     .pulse{animation:pulse 1.5s infinite;}
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;
+      display:flex;align-items:flex-end;justify-content:center;
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-top:2rem;backdrop-filter:blur(3px);}
     @media(min-width:600px){.modal-overlay{align-items:center;padding:1rem;}}
-    .modal-card{background:#fff;border-radius:1.5rem 1.5rem 0 0;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,.25);}
-    @media(min-width:600px){.modal-card{border-radius:1.5rem;max-height:90vh;}}
-    .modal-header{background:#111;padding:1rem 1.25rem;flex-shrink:0;border-radius:1.5rem 1.5rem 0 0;}
-    @media(min-width:600px){.modal-header{padding:1.25rem 1.5rem;}}
-    .modal-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;}
-    .modal-body{padding:1.25rem;}
-    .modal-footer{padding:.75rem 1.25rem 1.25rem;flex-shrink:0;border-top:1px solid #f3f4f6;background:#fff;}
-    .accept-btn{background:#C9A227;color:#111;font-weight:800;border:0;border-radius:.75rem;padding:.8rem 1.5rem;width:100%;font-size:.95rem;cursor:pointer;transition:background .15s;}
-    .accept-btn:hover{background:#A8841E;}
+    .modal-card{background:#fff;border-radius:1.5rem 1.5rem 0 0;max-width:520px;width:100%;
+      margin-top:auto;box-shadow:0 -8px 40px rgba(0,0,0,.25);}
+    @media(min-width:600px){.modal-card{border-radius:1.5rem;margin:auto;}}
+    .modal-header{background:#111;padding:1rem 1.25rem;border-radius:1.5rem 1.5rem 0 0;}
+    .modal-body{padding:1.25rem 1.25rem .75rem;}
+    .accept-btn{background:#C9A227;color:#111;font-weight:800;border:0;border-radius:.75rem;
+      padding:.85rem 1.5rem;width:100%;font-size:.95rem;cursor:pointer;transition:background .15s;}
+    .accept-btn:hover,.accept-btn:active{background:#A8841E;}
     .rule-item{display:flex;gap:.6rem;align-items:flex-start;padding:.45rem 0;border-bottom:1px solid #f3f4f6;}
     .rule-item:last-child{border-bottom:none;}
     .rule-icon{font-size:.95rem;flex-shrink:0;margin-top:.1rem;}
@@ -526,7 +528,7 @@ function DisclaimerModal({ onAccept }) {
             <span style={{fontSize:'1.6rem'}}>🐾</span>
             <div>
               <div className="font-black text-white tracking-widest text-lg" style={{letterSpacing:'.1em'}}>CLUB PAW</div>
-              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER WRESTLING CLUB</div>
+              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER CLUB PAW</div>
             </div>
           </div>
           <div className="mt-3 font-bold text-white text-xl">Tournament Viewer</div>
@@ -553,7 +555,7 @@ function DisclaimerModal({ onAccept }) {
           </div>
 
           <div className="mt-4 rounded-xl p-3 text-xs text-gray-500 leading-relaxed" style={{background:'#fefce8',border:'1px solid #C9A227'}}>
-            By tapping <strong>"I Understand — Enter Viewer"</strong> below, you acknowledge these guidelines and agree to conduct yourself in a manner consistent with the values of Club Paw.
+            By tapping <strong>"I Understand — Enter Viewer"</strong> below, you acknowledge these guidelines and agree to conduct yourself in a manner consistent with the values of Club PAW.
           </div>
         </div>
 
@@ -563,7 +565,7 @@ function DisclaimerModal({ onAccept }) {
             I Understand — Enter Viewer →
           </button>
           <p className="text-center text-xs text-gray-400 mt-3">
-            Thank you for supporting Rochester Club Paw Wrestling 🐾
+            Thank you for supporting Rochester Club PAW 🐾
           </p>
         </div>
 
