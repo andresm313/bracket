@@ -203,11 +203,12 @@ function NowWrestlingView({ matches }) {
       {/* Mat columns */}
       <div className="flex gap-3 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
         {mats.map(mat => {
-          const queue    = getQueue(mat);
-          const lastDone = getLastDone(mat);
-          const matTotal = matches.filter(m => m.mat===mat).length;
-          const matDone  = matches.filter(m => m.mat===mat && m.winner).length;
-          const allDone  = matTotal > 0 && matDone === matTotal;
+          const queue      = getQueue(mat);
+          const lastDone   = getLastDone(mat);
+          const matCountable = countableMatches(matches).filter(m => m.mat===mat);
+          const matTotal   = matCountable.length;
+          const matDone    = matCountable.filter(m => m.winner).length;
+          const allDone    = matTotal > 0 && matDone === matTotal;
 
           return (
             <div key={mat} className="mat-col" style={{flex:'1 1 270px',minWidth:265}}>
@@ -219,10 +220,10 @@ function NowWrestlingView({ matches }) {
               <div className="px-4 pt-2.5 pb-1">
                 <div className="flex justify-between mb-1" style={{fontSize:'.68rem',color:'#9ca3af'}}>
                   <span>{matDone}/{matTotal} done</span>
-                  <span>{Math.round(matDone/matTotal*100)||0}%</span>
+                  <span>{matTotal>0?Math.round(matDone/matTotal*100):0}%</span>
                 </div>
                 <div className="h-1 rounded-full" style={{background:'#e5e7eb'}}>
-                  <div className="h-1 rounded-full" style={{width:(matDone/matTotal*100||0)+'%',background:'#C9A227'}}/>
+                  <div className="h-1 rounded-full" style={{width:(matTotal>0?matDone/matTotal*100:0)+'%',background:'#C9A227'}}/>
                 </div>
               </div>
 
