@@ -778,9 +778,13 @@ function ResultsPage({matches,setMatches}){
           {/* Mat columns — one column per mat, rounds stack inside each */}
           <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
             {mats.map(mat=>{
-              const matMatches=matches.filter(m=>m.mat===mat&&visible(m));
-              const matDone=matches.filter(m=>m.mat===mat&&m.winner).length;
-              const matTotal=matches.filter(m=>m.mat===mat).length;
+              // Only count matches that are actually needed (exclude skipped BO3 match 3s)
+              const matCountable=countableMatches(matches).filter(m=>m.mat===mat);
+              const matDone=matCountable.filter(m=>m.winner).length;
+              const matTotal=matCountable.length;
+              const allMatDone=matTotal>0&&matDone===matTotal;
+              // For display: use countable matches filtered by pending/completed
+              const matMatches=matCountable.filter(m=>visible(m));
               return(
                 <div key={mat} className="flex-shrink-0 rounded-2xl overflow-hidden shadow-lg"
                   style={{minWidth:320,width:320,background:'#f8f8f8',border:'2px solid #e5e7eb'}}>
@@ -792,11 +796,11 @@ function ResultsPage({matches,setMatches}){
 
                   {/* Rounds within this mat */}
                   <div className="p-3">
-                    {rounds.map(round=>{
+                    {!allMatDone&&rounds.map(round=>{
                       const rm=matMatches.filter(m=>m.round===round);
                       if(!rm.length) return null;
-                      const rDone=matches.filter(m=>m.mat===mat&&m.round===round&&m.winner).length;
-                      const rTotal=matches.filter(m=>m.mat===mat&&m.round===round).length;
+                      const rDone=matCountable.filter(m=>m.round===round&&m.winner).length;
+                      const rTotal=matCountable.filter(m=>m.round===round).length;
                       return(
                         <div key={round} className="mb-4">
                           <div className="flex items-center gap-2 mb-2 px-1">
@@ -812,9 +816,12 @@ function ResultsPage({matches,setMatches}){
                         </div>
                       );
                     })}
-                    {matMatches.length===0&&(
-                      <div className="text-center text-gray-400 text-xs py-6">
-                        {filter==='pending'?'All matches complete ✓':'No matches yet'}
+                    {(allMatDone||matMatches.length===0)&&(
+                      <div className="text-center py-8">
+                        {allMatDone
+                          ? <><div className="text-3xl mb-2">✅</div><p className="font-bold text-green-600 text-sm">All matches complete!</p></>
+                          : <p className="text-gray-400 text-xs">No matches yet</p>
+                        }
                       </div>
                     )}
                   </div>
