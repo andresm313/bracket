@@ -215,6 +215,19 @@ function getBO3State(groupId, matches) {
   return { w1Wins, w2Wins, m1, m2, m3, seriesOver, seriesWinnerId, w1Id, w2Id };
 }
 
+// Returns only matches that count toward progress
+// (excludes BO3 Match 3s that are not needed because the series was already decided in 2)
+function countableMatches(matches) {
+  return matches.filter(m => {
+    if (!m.bo3decider) return true;         // normal match — always counts
+    if (m.winner) return true;              // was actually played — counts
+    const bo3 = getBO3State(m.groupId, matches);
+    if (!bo3) return true;
+    // Only count it if both M1+M2 done AND tied 1-1 (i.e. it's actually needed)
+    return bo3.m1?.winner && bo3.m2?.winner && bo3.w1Wins===1 && bo3.w2Wins===1;
+  });
+}
+
 /* STANDINGS */
 function computeStandings(group,matches){
   const rows=group.wrestlers.map(w=>({wrestler:w,wins:0,losses:0,pins:0,points:0}));
@@ -492,7 +505,8 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
 
   const allMats=[...Array(numMats)].map((_,i)=>i+1);
   const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
-  const done=matches.filter(m=>m.winner).length;
+  const schedCountable=countableMatches(matches);
+  const done=schedCountable.filter(m=>m.winner).length;
   const winLabel=m=>{if(!m.winner)return null;const n=m.winner===m.w1.id?m.w1.name:m.w2.name;return `${n} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;};
 
   // Move only the single selected match to the target mat
@@ -514,7 +528,7 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
           </select>
         </div>
         <button onClick={()=>{setMatches(generateSchedule(groups,numMats));setMoving(null);}} disabled={groups.length===0} className="cp-btn text-sm shadow">📋 Generate Schedule</button>
-        {matches.length>0&&<span className="text-sm text-gray-500 ml-auto">{done}/{matches.length} completed</span>}
+        {matches.length>0&&<span className="text-sm text-gray-500 ml-auto">{done}/{schedCountable.length} completed</span>}
       </div>
 
       {matches.length===0?(
@@ -721,8 +735,9 @@ function ResultsPage({matches,setMatches}){
   const undo=(id)=>setMatches(matches.map(m=>m.id===id?{...m,winner:null,winType:null}:m));
   const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
   const mats=[...new Set(matches.map(m=>m.mat))].sort((a,b)=>a-b);
-  const done=matches.filter(m=>m.winner).length;
-  const pct=matches.length?Math.round(done/matches.length*100):0;
+  const countable=countableMatches(matches);
+  const done=countable.filter(m=>m.winner).length;
+  const pct=countable.length?Math.round(done/countable.length*100):0;
 
   const visible=(m)=>{
     if(filter==='pending')   return !m.winner;
@@ -741,7 +756,7 @@ function ResultsPage({matches,setMatches}){
           <div className="bg-white rounded-2xl shadow p-4 mb-5">
             <div className="flex items-center justify-between mb-2 text-sm">
               <span className="font-semibold" style={{color:'#111'}}>Tournament Progress</span>
-              <span className="font-bold cp-gold-text">{done} / {matches.length} · {pct}%</span>
+              <span className="font-bold cp-gold-text">{done} / {countable.length} · {pct}%</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
