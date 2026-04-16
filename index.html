@@ -50,32 +50,71 @@ function uid(){return Math.random().toString(36).slice(2,10);}
 const save=(k,v)=>{try{localStorage.setItem('cp_'+k,JSON.stringify(v));}catch(_){}};
 const load=(k,fb)=>{try{const s=localStorage.getItem('cp_'+k);return s?JSON.parse(s):fb;}catch(_){return fb;}};
 
-/* VALIDATION */
+/* VALIDATION
+   Age gap rules (experience-dependent):
+     - Beginners (any group containing one): max 2 years gap
+     - Intermediate + Advanced mix: max 4 years gap
+     - Pure Intermediate or pure Advanced: max 3 years gap
+   Hard rules (never break):
+     - Weight spread ≤ 10 lbs
+     - Advanced NEVER with Beginners
+     - Beginners + Intermediates only as exactly 2+2 in a group of 4 (rare last resort)
+*/
 function validateGroup(wrestlers){
   const errors=[];
   if(wrestlers.length<2)return errors;
   const wts=wrestlers.map(w=>w.weight),ages=wrestlers.map(w=>w.age);
   const maxW=Math.max(...wts),minW=Math.min(...wts),maxA=Math.max(...ages),minA=Math.min(...ages);
-  if(maxW-minW>10) errors.push(`Weight spread ${minW}–${maxW} lbs exceeds 10 lb limit`);
-  if(maxA-minA>1)  errors.push(`Age gap ${minA}–${maxA} years exceeds 1-year limit`);
+
   const hasB=wrestlers.some(w=>w.experience==='Beginner');
   const hasA=wrestlers.some(w=>w.experience==='Advanced');
   const hasI=wrestlers.some(w=>w.experience==='Intermediate');
-  if(hasB&&hasA) errors.push('Beginners cannot wrestle Advanced wrestlers');
-  if(hasI&&hasA){const yI=wrestlers.find(w=>w.experience==='Intermediate'&&w.age<14);if(yI) errors.push(`${yI.name} (Intermediate, age ${yI.age}) must be 14+ to wrestle Advanced`);}
+
+  if(maxW-minW>10)
+    errors.push(`Weight spread ${minW}–${maxW} lbs exceeds 10 lb limit`);
+
+  // Age gap limit depends on experience mix
+  const ageLimit = hasB ? 2 : (hasI && hasA) ? 4 : 3;
+  if(maxA-minA>ageLimit)
+    errors.push(`Age gap ${minA}–${maxA} years exceeds ${ageLimit}-year limit (${hasB?'Beginner groups: max 2 yrs':hasI&&hasA?'Intermediate+Advanced: max 4 yrs':'same-level: max 3 yrs'})`);
+
+  // Hard rule: Advanced never with Beginners
+  if(hasB&&hasA)
+    errors.push('Advanced wrestlers cannot be grouped with Beginners');
+
+  // Hard rule: Beginners + Intermediates only allowed as exactly 2+2 in a group of 4
   if(hasB&&hasI){
     const B=wrestlers.filter(w=>w.experience==='Beginner').length;
     const I=wrestlers.filter(w=>w.experience==='Intermediate').length;
-    if(!(B===2&&I===2&&wrestlers.length===4)) errors.push('Beginners & Intermediates can only mix in a 2+2 group of 4 (last resort)');
+    if(!(B===2&&I===2&&wrestlers.length===4))
+      errors.push('Beginners & Intermediates can only mix as a 2+2 group of 4 (last resort only)');
   }
-  if(wrestlers.length>4) errors.push('Groups cannot have more than 4 wrestlers');
+
+  if(wrestlers.length>4)
+    errors.push('Groups cannot have more than 4 wrestlers');
+
   return errors;
 }
 function isValid(w){return validateGroup(w).length===0;}
 function isPure(w){return new Set(w.map(x=>x.experience)).size===1;}
 function hasBeginners(w){return w.some(x=>x.experience==='Beginner');}
+function hasAdvanced(w){return w.some(x=>x.experience==='Advanced');}
+function hasIntermediates(w){return w.some(x=>x.experience==='Intermediate');}
 
-/* GROUPING */
+/* GROUPING
+   Priority order:
+   1.  Pure Advanced group of 4
+   2.  Pure Advanced group of 3
+   3.  Pure Intermediate group of 4
+   4.  Pure Intermediate group of 3
+   5.  Pure Beginner group of 4
+   6.  Pure Beginner group of 3
+   7.  Intermediate + Advanced mix of 4   (fallback — no beginners)
+   8.  Intermediate + Advanced mix of 3   (fallback — no beginners)
+   9.  Beginner + Intermediate 2+2 of 4   (rare last resort)
+   10. Pure group of 2
+   11. Any valid group of 2               (absolute last resort)
+*/
 function generateGroups(wrestlers){
   const sorted=[...wrestlers].sort((a,b)=>a.weight-b.weight);
   const remaining=[...sorted];
@@ -88,11 +127,19 @@ function generateGroups(wrestlers){
       if(group||cands.length<sz)return;
       for(const c of combinations(cands,sz)){if(isValid(c)&&(!filter||filter(c))){group=c;return;}}
     };
-    trySize(4,isPure);
-    trySize(3,isPure);
+    // 1-6: Pure groups, by experience tier, largest first
+    trySize(4,c=>isPure(c)&&hasAdvanced(c));
+    trySize(3,c=>isPure(c)&&hasAdvanced(c));
+    trySize(4,c=>isPure(c)&&hasIntermediates(c)&&!hasAdvanced(c));
+    trySize(3,c=>isPure(c)&&hasIntermediates(c)&&!hasAdvanced(c));
+    trySize(4,c=>isPure(c)&&hasBeginners(c));
+    trySize(3,c=>isPure(c)&&hasBeginners(c));
+    // 7-8: I+A mix (no beginners)
     trySize(4,c=>!isPure(c)&&!hasBeginners(c));
     trySize(3,c=>!isPure(c)&&!hasBeginners(c));
+    // 9: 2B+2I — rare, already enforced by isValid
     trySize(4,c=>!isPure(c));
+    // 10-11: groups of 2
     trySize(2,isPure);
     trySize(2,null);
     if(group){
@@ -148,20 +195,36 @@ function parseCSV(text){
 }
 
 const SAMPLE_CSV=`Name,Age,Grade,Experience,Weight
-Alex Johnson,14,9th,Beginner,125
-Maria Santos,15,10th,Intermediate,132
-Chris Lee,14,9th,Intermediate,128
-Jordan Kim,16,11th,Advanced,155
-Sam Rivera,15,10th,Beginner,120
-Taylor Brown,16,11th,Advanced,160
-Casey Wilson,14,9th,Beginner,115
-Morgan Davis,15,10th,Intermediate,135
-Riley Chen,14,9th,Beginner,122
-Jamie Garcia,15,10th,Intermediate,150
-Drew Martinez,16,11th,Advanced,158
-Skyler Patel,14,9th,Beginner,118
-Blake Thompson,15,10th,Intermediate,140
-Avery Robinson,16,11th,Advanced,165`;
+Liam Torres,7,2nd,Beginner,52
+Emma Chen,8,3rd,Beginner,58
+Noah Rivera,7,2nd,Beginner,55
+Olivia Park,8,3rd,Beginner,61
+Mason Kim,9,4th,Beginner,68
+Ava Martinez,9,4th,Beginner,65
+Lucas Johnson,10,5th,Beginner,77
+Sophia Davis,8,3rd,Beginner,60
+Ethan Wilson,9,4th,Beginner,70
+Isabella Brown,7,2nd,Beginner,53
+Aiden Garcia,10,5th,Intermediate,82
+Mia Thompson,11,6th,Intermediate,89
+James Anderson,11,6th,Intermediate,92
+Charlotte Lewis,12,7th,Intermediate,99
+Oliver Harris,10,5th,Intermediate,85
+Amelia Clark,11,6th,Intermediate,91
+Elijah Robinson,12,7th,Intermediate,105
+Harper White,12,7th,Intermediate,101
+Benjamin Scott,13,8th,Intermediate,116
+Luna Adams,11,6th,Intermediate,88
+Alexander Nelson,13,8th,Intermediate,119
+Evelyn Carter,12,7th,Intermediate,103
+William Phillips,13,8th,Advanced,126
+Sofia Evans,14,9th,Advanced,119
+Michael Turner,14,9th,Advanced,136
+Camila Collins,13,8th,Advanced,123
+Sebastian Morris,15,10th,Advanced,149
+Scarlett Rogers,14,9th,Advanced,141
+Jack Reed,15,10th,Advanced,156
+Victoria Cox,13,8th,Advanced,129`;
 
 function Badge({text}){
   const cls=text==='Beginner'?'badge-b':text==='Intermediate'?'badge-i':'badge-a';
@@ -300,7 +363,7 @@ function GroupsPage({wrestlers,groups,setGroups,unassigned,setUnassigned,setMatc
         <div className="cp-info rounded-2xl p-10 text-center">
           <div className="text-4xl mb-3">⚙️</div>
           Click <strong>Auto-Generate Groups</strong> to create brackets automatically.
-          <p className="text-xs mt-2 opacity-70">Priority: pure 4 → pure 3 → I+A mix → 2B+2I mix → pure 2 (last resort)</p>
+          <p className="text-xs mt-2 opacity-70">Priority: pure Adv → pure Int → pure Beg → I+A mix → 2B+2I (rare) → 2-person (last resort)</p>
         </div>
       )}
       {moving&&(
