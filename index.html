@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Club Paw — Tournament Viewer</title>
+  <title>Rochester Club Paw — Tournament Manager</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,38 +12,27 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
-    body{background:#f3f4f6;margin:0;}
-    .cp-nav{background:#111111;}
+    body{background:#f3f4f6;}
+    .cp-nav{background:var(--black);}
+    .cp-dark{background:var(--black);color:#fff;}
+    .cp-gold{background:var(--gold);color:var(--black);}
     .cp-gold-text{color:var(--gold);}
-    .cp-nav-active{background:var(--gold);color:#111!important;font-weight:700;}
+    .cp-gold-border{border-color:var(--gold)!important;}
+    .cp-btn{background:var(--gold);color:var(--black);font-weight:700;border-radius:.75rem;padding:.5rem 1.25rem;transition:background .15s;border:0;cursor:pointer;}
+    .cp-btn:hover{background:var(--gold-dk);}
+    .cp-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .cp-nav-active{background:var(--gold);color:var(--black)!important;font-weight:700;}
     .cp-nav-inactive{color:#d4b483;}
     .cp-nav-inactive:hover{background:#222;}
+    .cp-info{background:#fefce8;border:1px solid var(--gold);color:#78350f;}
+    .pin-btn{background:#111;color:#C9A227;border:2px solid #C9A227;border-radius:.5rem;padding:.4rem .75rem;font-weight:700;cursor:pointer;width:100%;transition:background .1s;}
+    .pin-btn:hover{background:#222;}
+    .pts-btn{background:#fff;color:#111;border:2px solid #ddd;border-radius:.5rem;padding:.4rem .75rem;font-weight:700;cursor:pointer;width:100%;transition:all .1s;}
+    .pts-btn:hover{background:#f3f4f6;border-color:#999;}
     .badge-b{background:#d1fae5;color:#065f46;}
     .badge-i{background:#fef3c7;color:#92400e;}
     .badge-a{background:#fee2e2;color:#991b1b;}
-    .pulse{animation:pulse 1.5s infinite;}
-    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);}
-    .modal-card{background:#fff;border-radius:1.5rem;max-width:560px;width:100%;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.35);}
-    .modal-header{background:#111;padding:1.5rem 1.75rem;}
-    .modal-body{padding:1.75rem;}
-    .modal-footer{padding:0 1.75rem 1.75rem;}
-    .accept-btn{background:#C9A227;color:#111;font-weight:800;border:0;border-radius:.85rem;padding:.85rem 1.5rem;width:100%;font-size:1rem;cursor:pointer;transition:background .15s;letter-spacing:.02em;}
-    .accept-btn:hover{background:#A8841E;}
-    .rule-item{display:flex;gap:.75rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f3f4f6;}
-    .rule-item:last-child{border-bottom:none;}
-    .rule-icon{font-size:1.1rem;flex-shrink:0;margin-top:.05rem;}
-    .mat-col{background:#fff;border-radius:1.25rem;overflow:hidden;flex:1;min-width:260px;box-shadow:0 2px 12px rgba(0,0,0,.08);}
-    .mat-header{background:#C9A227;color:#111;padding:.75rem 1rem;font-weight:900;font-size:1.25rem;text-align:center;letter-spacing:.05em;}
-    .now-card{background:#fffbeb;border:2px solid #C9A227;border-radius:1rem;padding:.9rem;}
-    .queue-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:.85rem;padding:.7rem;}
-    .done-card{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.85rem;padding:.65rem;}
-    .lbl-now{background:#C9A227;color:#111;font-size:.6rem;font-weight:800;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.1em;text-transform:uppercase;}
-    .lbl-next{background:#e5e7eb;color:#555;font-size:.6rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase;}
-    .lbl-soon{background:#f3f4f6;color:#9ca3af;font-size:.6rem;font-weight:600;padding:.12rem .5rem;border-radius:9999px;letter-spacing:.06em;text-transform:uppercase;}
-    .vs-pill{background:#e5e7eb;color:#9ca3af;font-size:.65rem;font-weight:800;padding:.12rem .45rem;border-radius:9999px;flex-shrink:0;}
-    .w-name{font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .w-sub{font-size:.7rem;color:#9ca3af;margin-top:.1rem;}
+    input[type=file]::file-selector-button{background:#C9A227;color:#111;font-weight:700;border:0;padding:.4rem .9rem;border-radius:.5rem;cursor:pointer;margin-right:.75rem;}
   </style>
 </head>
 <body>
@@ -51,7 +40,16 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-// ─── FIREBASE CONFIG ── paste the SAME config as index.html ──────────────────
+function combinations(arr,k){
+  if(k>arr.length||k<=0)return[];
+  if(k===arr.length)return[[...arr]];
+  if(k===1)return arr.map(el=>[el]);
+  const r=[];
+  for(let i=0;i<=arr.length-k;i++) combinations(arr.slice(i+1),k-1).forEach(c=>r.push([arr[i],...c]));
+  return r;
+}
+function uid(){return Math.random().toString(36).slice(2,10);}
+// ─── FIREBASE CONFIG ── paste your config here ───────────────────────────────
 const firebaseConfig = {
   apiKey:            "AIzaSyB3F1G1cJWZllc_Vr_L49_42sXRQda3RkE",
   authDomain:        "club-paw-tournament.firebaseapp.com",
@@ -61,72 +59,150 @@ const firebaseConfig = {
   messagingSenderId: "372778383531",
   appId:             "1:372778383531:web:0f75a2732e57429b485fee"
 };
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const dbRef = k => db.ref('clubpaw/' + k);
 // ─────────────────────────────────────────────────────────────────────────────
 
-function computeStandings(group, matches) {
-  const rows = group.wrestlers.map(w => ({ wrestler: w, wins:0, losses:0, pins:0, points:0 }));
-  matches.filter(m => m.groupId === group.id && m.winner).forEach(m => {
-    const loserId = m.winner === m.w1.id ? m.w2.id : m.w1.id;
-    const win = rows.find(r => r.wrestler.id === m.winner);
-    const los = rows.find(r => r.wrestler.id === loserId);
-    if (win) { win.wins++; win.points += m.winType==='pin'?6:4; if(m.winType==='pin') win.pins++; }
-    if (los) los.losses++;
+const save=(k,v)=>{try{dbRef(k).set(v);}catch(_){}};
+
+/* VALIDATION
+   Age gap rules (experience-dependent):
+     - Beginners (any group containing one): max 2 years gap
+     - Intermediate + Advanced mix: max 4 years gap
+     - Pure Intermediate or pure Advanced: max 3 years gap
+   Hard rules (never break):
+     - Weight spread ≤ 10 lbs
+     - Advanced NEVER with Beginners
+     - Beginners + Intermediates only as exactly 2+2 in a group of 4 (rare last resort)
+*/
+function validateGroup(wrestlers){
+  const errors=[];
+  if(wrestlers.length<2)return errors;
+  const wts=wrestlers.map(w=>w.weight),ages=wrestlers.map(w=>w.age);
+  const maxW=Math.max(...wts),minW=Math.min(...wts),maxA=Math.max(...ages),minA=Math.min(...ages);
+
+  const hasB=wrestlers.some(w=>w.experience==='Beginner');
+  const hasA=wrestlers.some(w=>w.experience==='Advanced');
+  const hasI=wrestlers.some(w=>w.experience==='Intermediate');
+
+  if(maxW-minW>10)
+    errors.push(`Weight spread ${minW}–${maxW} lbs exceeds 10 lb limit`);
+
+  // Age gap limit depends on experience mix
+  const ageLimit = hasB ? 2 : (hasI && hasA) ? 4 : 3;
+  if(maxA-minA>ageLimit)
+    errors.push(`Age gap ${minA}–${maxA} years exceeds ${ageLimit}-year limit (${hasB?'Beginner groups: max 2 yrs':hasI&&hasA?'Intermediate+Advanced: max 4 yrs':'same-level: max 3 yrs'})`);
+
+  // Hard rule: Advanced never with Beginners
+  if(hasB&&hasA)
+    errors.push('Advanced wrestlers cannot be grouped with Beginners');
+
+  // Hard rule: Beginners + Intermediates only allowed as exactly 2+2 in a group of 4
+  if(hasB&&hasI){
+    const B=wrestlers.filter(w=>w.experience==='Beginner').length;
+    const I=wrestlers.filter(w=>w.experience==='Intermediate').length;
+    if(!(B===2&&I===2&&wrestlers.length===4))
+      errors.push('Beginners & Intermediates can only mix as a 2+2 group of 4 (last resort only)');
+  }
+
+  if(wrestlers.length>4)
+    errors.push('Groups cannot have more than 4 wrestlers');
+
+  return errors;
+}
+function isValid(w){return validateGroup(w).length===0;}
+function isPure(w){return new Set(w.map(x=>x.experience)).size===1;}
+function hasBeginners(w){return w.some(x=>x.experience==='Beginner');}
+function hasAdvanced(w){return w.some(x=>x.experience==='Advanced');}
+function hasIntermediates(w){return w.some(x=>x.experience==='Intermediate');}
+
+/* GROUPING
+   Priority order:
+   1.  Pure Advanced group of 4
+   2.  Pure Advanced group of 3
+   3.  Pure Intermediate group of 4
+   4.  Pure Intermediate group of 3
+   5.  Pure Beginner group of 4
+   6.  Pure Beginner group of 3
+   7.  Intermediate + Advanced mix of 4   (fallback — no beginners)
+   8.  Intermediate + Advanced mix of 3   (fallback — no beginners)
+   9.  Beginner + Intermediate 2+2 of 4   (rare last resort)
+   10. Pure group of 2
+   11. Any valid group of 2               (absolute last resort)
+*/
+function generateGroups(wrestlers){
+  const sorted=[...wrestlers].sort((a,b)=>a.weight-b.weight);
+  const remaining=[...sorted];
+  const groups=[],unassigned=[];
+  while(remaining.length>0){
+    const anchor=remaining[0];
+    const cands=remaining.filter(w=>w.weight-anchor.weight<=10);
+    let group=null;
+    const trySize=(sz,filter)=>{
+      if(group||cands.length<sz)return;
+      for(const c of combinations(cands,sz)){if(isValid(c)&&(!filter||filter(c))){group=c;return;}}
+    };
+    // 1-6: Pure groups, by experience tier, largest first
+    trySize(4,c=>isPure(c)&&hasAdvanced(c));
+    trySize(3,c=>isPure(c)&&hasAdvanced(c));
+    trySize(4,c=>isPure(c)&&hasIntermediates(c)&&!hasAdvanced(c));
+    trySize(3,c=>isPure(c)&&hasIntermediates(c)&&!hasAdvanced(c));
+    trySize(4,c=>isPure(c)&&hasBeginners(c));
+    trySize(3,c=>isPure(c)&&hasBeginners(c));
+    // 7-8: I+A mix (no beginners)
+    trySize(4,c=>!isPure(c)&&!hasBeginners(c));
+    trySize(3,c=>!isPure(c)&&!hasBeginners(c));
+    // 9: 2B+2I — rare, already enforced by isValid
+    trySize(4,c=>!isPure(c));
+    // 10-11: groups of 2
+    trySize(2,isPure);
+    trySize(2,null);
+    if(group){
+      groups.push({id:uid(),label:'',wrestlers:group});
+      group.forEach(w=>remaining.splice(remaining.findIndex(r=>r.id===w.id),1));
+    } else {unassigned.push(anchor);remaining.shift();}
+  }
+  groups.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+  return{groups,unassigned};
+}
+
+/* SCHEDULING */
+function buildMatches(group){
+  const w=group.wrestlers,n=w.length,raw=[];
+  if(n===2){
+    // Best of 3 — all 3 rounds pre-created; round 3 only matters if 1-1 after round 2
+    raw.push({round:1,w1:w[0],w2:w[1],bo3:true});
+    raw.push({round:2,w1:w[0],w2:w[1],bo3:true});
+    raw.push({round:3,w1:w[0],w2:w[1],bo3:true,bo3decider:true});
+  }
+  else if(n===3){raw.push({round:1,w1:w[0],w2:w[1]});raw.push({round:2,w1:w[0],w2:w[2]});raw.push({round:3,w1:w[1],w2:w[2]});}
+  else if(n===4){raw.push({round:1,w1:w[0],w2:w[3]});raw.push({round:1,w1:w[1],w2:w[2]});raw.push({round:2,w1:w[0],w2:w[1]});raw.push({round:2,w1:w[2],w2:w[3]});raw.push({round:3,w1:w[0],w2:w[2]});raw.push({round:3,w1:w[1],w2:w[3]});}
+  return raw.map(m=>({...m,id:uid(),groupId:group.id,groupLabel:group.label,winner:null,winType:null,mat:1}));
+}
+function generateSchedule(groups,numMats){
+  // How many matches each group produces
+  const matchCount=g=>g.wrestlers.length===2?2:g.wrestlers.length===3?3:6; // BO3 counts as ~2 for load balancing
+
+  // Greedy balancing: assign largest groups first, always to the mat with fewest matches
+  const matLoads=Array.from({length:numMats},(_,i)=>({mat:i+1,total:0}));
+  const assign={};
+  const sorted=[...groups].sort((a,b)=>matchCount(b)-matchCount(a));
+  sorted.forEach(g=>{
+    const lightest=matLoads.reduce((min,m)=>m.total<min.total?m:min);
+    assign[g.id]=lightest.mat;
+    lightest.total+=matchCount(g);
   });
-  rows.sort((a,b) => b.points-a.points || b.wins-a.wins || b.pins-a.pins);
-  return rows;
+
+  const matches=[];
+  groups.forEach(g=>buildMatches(g).forEach(m=>matches.push({...m,mat:assign[g.id]})));
+  return matches;
 }
 
-function Badge({ text }) {
-  const cls = text==='Beginner'?'badge-b':text==='Intermediate'?'badge-i':'badge-a';
-  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{text?text[0]:'?'}</span>;
-}
-
-/* NAV */
-function Nav({ page, setPage, lastUpdated }) {
-  const tabs = [
-    { id:'now',       label:'🟢 Now Wrestling' },
-    { id:'standings', label:'🏆 Standings'     },
-    { id:'schedule',  label:'📋 Schedule'       },
-  ];
-  return (
-    <nav className="cp-nav shadow-xl sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <div className="font-bold cp-gold-text text-base tracking-widest">🐾 CLUB PAW</div>
-          <span className="text-gray-600 text-xs hidden sm:block">Tournament Viewer</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => setPage(t.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${page===t.id?'cp-nav-active':'cp-nav-inactive'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-xs" style={{color:'#555'}}>
-          <span className="pulse" style={{color:'#C9A227'}}>●</span>
-          <span>Live · {lastUpdated}</span>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function Empty({ message }) {
-  return (
-    <div className="bg-white rounded-2xl shadow p-12 text-center max-w-md mx-auto mt-8">
-      <div className="text-5xl mb-4">🐾</div>
-      <p className="font-medium text-gray-500">{message}</p>
-      <p className="text-xs mt-2 text-gray-400">Data will appear once the tournament director sets up the brackets.</p>
-    </div>
-  );
-}
-
-/* BO3 HELPER */
+/* BO3 HELPERS */
 function getBO3State(groupId, matches) {
-  const gm = matches.filter(m => m.groupId === groupId && m.bo3).sort((a,b) => a.round - b.round);
+  // Returns {w1Wins, w2Wins, m1, m2, m3, seriesOver, seriesWinnerId}
+  const gm = matches.filter(m => m.groupId === groupId && m.bo3).sort((a,b)=>a.round-b.round);
   if (!gm.length) return null;
   const m1 = gm[0], m2 = gm[1], m3 = gm[2];
   const w1Id = m1.w1.id, w2Id = m1.w2.id;
@@ -139,473 +215,874 @@ function getBO3State(groupId, matches) {
   return { w1Wins, w2Wins, m1, m2, m3, seriesOver, seriesWinnerId, w1Id, w2Id };
 }
 
+// Returns only matches that count toward progress
+// (excludes BO3 Match 3s that are not needed because the series was already decided in 2)
 function countableMatches(matches) {
   return matches.filter(m => {
-    if (!m.bo3decider) return true;
-    if (m.winner) return true;
+    if (!m.bo3decider) return true;         // normal match — always counts
+    if (m.winner) return true;              // was actually played — counts
     const bo3 = getBO3State(m.groupId, matches);
     if (!bo3) return true;
+    // Only count it if both M1+M2 done AND tied 1-1 (i.e. it's actually needed)
     return bo3.m1?.winner && bo3.m2?.winner && bo3.w1Wins===1 && bo3.w2Wins===1;
   });
 }
 
-/* NOW WRESTLING */
-function NowWrestlingView({ matches }) {
-  if (!matches.length) return <Empty message="Schedule not generated yet." />;
+/* STANDINGS */
+function computeStandings(group,matches){
+  const rows=group.wrestlers.map(w=>({wrestler:w,wins:0,losses:0,pins:0,points:0}));
+  matches.filter(m=>m.groupId===group.id&&m.winner).forEach(m=>{
+    const loserId=m.winner===m.w1.id?m.w2.id:m.w1.id;
+    const win=rows.find(r=>r.wrestler.id===m.winner);
+    const los=rows.find(r=>r.wrestler.id===loserId);
+    if(win){win.wins++;win.points+=m.winType==='pin'?6:4;if(m.winType==='pin')win.pins++;}
+    if(los)los.losses++;
+  });
+  rows.sort((a,b)=>b.points-a.points||b.wins-a.wins||b.pins-a.pins);
+  return rows;
+}
 
-  const mats     = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
-  const countable  = countableMatches(matches);
-  const totalDone  = countable.filter(m => m.winner).length;
-  const totalPct   = countable.length ? Math.round(totalDone / countable.length * 100) : 0;
+/* CSV */
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(lines.length<2)return[];
+  const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/\s+/g,''));
+  return lines.slice(1).map((line,i)=>{
+    const vals=line.split(',').map(v=>v.trim());
+    const obj={};
+    headers.forEach((h,j)=>{obj[h]=vals[j]||'';});
+    return{id:uid(),name:obj.name||`Wrestler ${i+1}`,age:parseFloat(obj.age)||14,grade:obj.grade||'',experience:['Beginner','Intermediate','Advanced'].includes(obj.experience)?obj.experience:'Beginner',weight:parseFloat(obj.weight)||130};
+  }).filter(w=>w.name&&w.weight>0);
+}
 
-  // Pending matches per mat in round order — skip locked BO3 matches
-  function getQueue(mat) {
-    return matches
-      .filter(m => {
-        if (m.mat !== mat || m.winner) return false;
-        // Skip BO3 Match 2 if Match 1 not done yet (show M1 first)
-        if (m.bo3 && m.round === 2) {
-          const bo3 = getBO3State(m.groupId, matches);
-          if (bo3 && !bo3.m1?.winner) return false;
-        }
-        // Skip BO3 Match 3 (decider) if not needed or not yet unlocked
-        if (m.bo3decider) {
-          const bo3 = getBO3State(m.groupId, matches);
-          if (!bo3) return false;
-          if (bo3.seriesOver) return false; // series already decided
-          if (!bo3.m1?.winner || !bo3.m2?.winner) return false; // matches 1+2 not done
-          if (!(bo3.w1Wins === 1 && bo3.w2Wins === 1)) return false; // not tied
-        }
-        return true;
-      })
-      .sort((a,b) => a.round - b.round);
-  }
+const SAMPLE_CSV=`Name,Age,Grade,Experience,Weight
+Liam Torres,7,2nd,Beginner,52
+Emma Chen,8,3rd,Beginner,58
+Noah Rivera,7,2nd,Beginner,55
+Olivia Park,8,3rd,Beginner,61
+Mason Kim,9,4th,Beginner,68
+Ava Martinez,9,4th,Beginner,65
+Lucas Johnson,10,5th,Beginner,77
+Sophia Davis,8,3rd,Beginner,60
+Ethan Wilson,9,4th,Beginner,70
+Isabella Brown,7,2nd,Beginner,53
+Aiden Garcia,10,5th,Intermediate,82
+Mia Thompson,11,6th,Intermediate,89
+James Anderson,11,6th,Intermediate,92
+Charlotte Lewis,12,7th,Intermediate,99
+Oliver Harris,10,5th,Intermediate,85
+Amelia Clark,11,6th,Intermediate,91
+Elijah Robinson,12,7th,Intermediate,105
+Harper White,12,7th,Intermediate,101
+Benjamin Scott,13,8th,Intermediate,116
+Luna Adams,11,6th,Intermediate,88
+Alexander Nelson,13,8th,Intermediate,119
+Evelyn Carter,12,7th,Intermediate,103
+William Phillips,13,8th,Advanced,126
+Sofia Evans,14,9th,Advanced,119
+Michael Turner,14,9th,Advanced,136
+Camila Collins,13,8th,Advanced,123
+Sebastian Morris,15,10th,Advanced,149
+Scarlett Rogers,14,9th,Advanced,141
+Jack Reed,15,10th,Advanced,156
+Victoria Cox,13,8th,Advanced,129`;
 
-  // Most recently completed match on this mat
-  function getLastDone(mat) {
-    const done = matches
-      .filter(m => m.mat === mat && m.winner)
-      .sort((a,b) => b.round - a.round);
-    return done[0] || null;
-  }
+function Badge({text}){
+  const cls=text==='Beginner'?'badge-b':text==='Intermediate'?'badge-i':'badge-a';
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{text?text[0]:'?'}</span>;
+}
 
-  const SLOTS = [
-    { lbl:'ON MAT NOW', cls:'lbl-now',  card:'now-card',   nameSize:'text-base', divider:true  },
-    { lbl:'UP NEXT',    cls:'lbl-next', card:'queue-card',  nameSize:'text-sm',   divider:false },
-    { lbl:'AFTER NEXT', cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
-    { lbl:'COMING UP',  cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
-    { lbl:'COMING UP',  cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
-  ];
-
-  return (
-    <div>
-      {/* Progress */}
-      <div className="bg-white rounded-2xl shadow p-4 mb-5">
-        <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="font-semibold text-gray-700">Tournament Progress</span>
-          <span className="font-bold cp-gold-text">{totalDone} / {countable.length} matches · {totalPct}%</span>
-        </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
-          <div className="h-2 rounded-full transition-all" style={{width:totalPct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
-        </div>
+/* NAV */
+function Nav({page,setPage,wrestlers,groups}){
+  const tabs=[{id:'upload',icon:'①',label:'Upload',badge:wrestlers.length||null},{id:'groups',icon:'②',label:'Groups',badge:groups.length||null},{id:'schedule',icon:'③',label:'Schedule',badge:null},{id:'results',icon:'④',label:'Results',badge:null},{id:'standings',icon:'⑤',label:'Standings',badge:null},
+    {id:'reset',icon:'⑥',label:'Reset',badge:null}];
+  return(
+    <nav className="cp-nav shadow-xl sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-1 flex-wrap">
+        <div className="font-bold cp-gold-text text-base mr-4 whitespace-nowrap tracking-widest">🐾 CLUB PAW</div>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setPage(t.id)} className={`relative px-3 py-1.5 rounded-lg text-sm transition-all ${page===t.id?'cp-nav-active':'cp-nav-inactive'}`}>
+            {t.icon} {t.label}
+            {t.badge?<span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{t.badge>99?'99+':t.badge}</span>:null}
+          </button>
+        ))}
       </div>
-
-      {/* Mat columns */}
-      <div className="flex gap-3 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
-        {mats.map(mat => {
-          const queue      = getQueue(mat);
-          const lastDone   = getLastDone(mat);
-          const matCountable = countableMatches(matches).filter(m => m.mat===mat);
-          const matTotal   = matCountable.length;
-          const matDone    = matCountable.filter(m => m.winner).length;
-          const allDone    = matTotal > 0 && matDone === matTotal;
-
-          return (
-            <div key={mat} className="mat-col" style={{flex:'1 1 270px',minWidth:265}}>
-
-              {/* Mat header */}
-              <div className="mat-header">Mat {mat}</div>
-
-              {/* Mat mini progress */}
-              <div className="px-4 pt-2.5 pb-1">
-                <div className="flex justify-between mb-1" style={{fontSize:'.68rem',color:'#9ca3af'}}>
-                  <span>{matDone}/{matTotal} done</span>
-                  <span>{matTotal>0?Math.round(matDone/matTotal*100):0}%</span>
-                </div>
-                <div className="h-1 rounded-full" style={{background:'#e5e7eb'}}>
-                  <div className="h-1 rounded-full" style={{width:(matTotal>0?matDone/matTotal*100:0)+'%',background:'#C9A227'}}/>
-                </div>
-              </div>
-
-              <div className="p-3 space-y-2">
-                {allDone ? (
-                  <div className="text-center py-10">
-                    <div className="text-3xl mb-2">✅</div>
-                    <p className="font-bold text-sm" style={{color:'#16a34a'}}>All done on this mat!</p>
-                  </div>
-                ) : (
-                  <>
-                    {queue.slice(0, 5).map((m, idx) => {
-                      const slot = SLOTS[idx] || SLOTS[4];
-                      return (
-                        <div key={m.id} className={slot.card}>
-                          {/* Label row */}
-                          {(() => {
-                            const bo3 = m.bo3 ? getBO3State(m.groupId, matches) : null;
-                            return (
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className={slot.cls}>{slot.lbl}</span>
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.6rem'}}>
-                                  {m.groupLabel}
-                                </span>
-                                {m.bo3 && bo3 && (
-                                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{background: m.bo3decider?'#dcfce7':'#f3f4f6', color: m.bo3decider?'#166534':'#6b7280', fontSize:'.58rem'}}>
-                                    {m.bo3decider ? '🏆 M3' : `M${m.round}`} · {bo3.w1Wins}-{bo3.w2Wins}
-                                  </span>
-                                )}
-                                <span className="ml-auto text-xs" style={{color:'#9ca3af',fontSize:'.65rem'}}>Rnd {m.round}</span>
-                              </div>
-                            );
-                          })()}
-
-                          {/* Wrestlers */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className={`w-name ${slot.nameSize}`}>{m.w1.name}</div>
-                              <div className="w-sub">{m.w1.weight}lbs · Age {m.w1.age}</div>
-                            </div>
-                            <span className="vs-pill">VS</span>
-                            <div className="flex-1 min-w-0 text-right">
-                              <div className={`w-name ${slot.nameSize}`}>{m.w2.name}</div>
-                              <div className="w-sub">{m.w2.weight}lbs · Age {m.w2.age}</div>
-                            </div>
-                          </div>
-
-                          {/* Gold accent line under ON MAT NOW */}
-                          {slot.divider && (
-                            <div className="mt-2 h-px rounded-full" style={{background:'linear-gradient(to right,#C9A227,transparent)'}}/>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Last completed on this mat */}
-                    {lastDone && (
-                      <div className="done-card mt-1">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span style={{color:'#16a34a',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
-                          <span className="ml-auto" style={{color:'#9ca3af',fontSize:'.62rem'}}>Rnd {lastDone.round}</span>
-                        </div>
-                        <div style={{fontSize:'.75rem',color:'#666'}}>
-                          <span className={lastDone.winner===lastDone.w1.id?'text-green-400 font-bold':''}>{lastDone.w1.name}</span>
-                          <span className="mx-1" style={{color:'#d1d5db'}}>vs</span>
-                          <span className={lastDone.winner===lastDone.w2.id?'text-green-600 font-bold':''}>{lastDone.w2.name}</span>
-                        </div>
-                        <div style={{fontSize:'.72rem',marginTop:'.25rem',color:'#C9A227'}}>
-                          🏆 {lastDone.winner===lastDone.w1.id?lastDone.w1.name:lastDone.w2.name} — {lastDone.winType==='pin'?'Pin (6pts)':'Points (4pts)'}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    </nav>
   );
 }
 
-/* STANDINGS */
-function StandingsView({ groups, matches }) {
-  const ICONS = ['🥇','🥈','🥉','4th'];
-  if (!groups.length) return <Empty message="No groups created yet." />;
-  return (
-    <div className="space-y-6">
-      {groups.map(group => {
-        const is2       = group.wrestlers.length === 2;
-        const standings = computeStandings(group, matches);
-        const gm        = matches.filter(m => m.groupId===group.id);
-        const bo3       = is2 ? getBO3State(group.id, matches) : null;
-        const completed = gm.filter(m => m.winner).length;
-        const total     = gm.length;
-        const finished  = is2 ? (bo3 && bo3.seriesOver) : (total > 0 && completed === total);
-        const pct       = total ? Math.round(completed/total*100) : 0;
-        const seriesWinner = is2 && bo3 && bo3.seriesWinnerId
-          ? (bo3.seriesWinnerId === group.wrestlers[0].id ? group.wrestlers[0].name : group.wrestlers[1].name)
-          : null;
-
-        return (
-          <div key={group.id} className="rounded-2xl overflow-hidden shadow bg-white">
-            <div className="px-5 py-3 flex items-center justify-between" style={{background:'#111111'}}>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-xl text-white">Group {group.label}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{background:'#C9A227',color:'#111'}}>
-                  {is2 ? 'Best of 3' : `${group.wrestlers.length}-person`}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {is2 && bo3
-                  ? <span className="text-sm font-bold cp-gold-text">Series: {bo3.w1Wins}–{bo3.w2Wins}</span>
-                  : <span className="text-sm cp-gold-text">{completed}/{total} matches</span>
-                }
-                {finished && (
-                  <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                    {is2 && seriesWinner ? `${seriesWinner} wins!` : 'FINAL'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* BO3 match-by-match strip */}
-            {is2 && bo3 && (
-              <div className="px-5 py-2 flex items-center gap-3 text-xs border-b bg-gray-50">
-                {[bo3.m1, bo3.m2, bo3.m3].map((m, i) => m ? (
-                  <div key={i} className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-                    !m.winner && m.bo3decider && !(bo3.w1Wins===1&&bo3.w2Wins===1) ? 'opacity-30' : ''
-                  }`} style={{background: m.winner ? (m.bo3decider?'#dcfce7':'#fef9e7') : '#f3f4f6'}}>
-                    <span className="font-bold text-gray-500">M{i+1}</span>
-                    {m.winner ? (
-                      <span className="font-semibold" style={{color: m.bo3decider?'#16a34a':'#C9A227'}}>
-                        → {m.winner===m.w1.id ? m.w1.name : m.w2.name}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">
-                        {m.bo3decider && !(bo3.w1Wins===1&&bo3.w2Wins===1) ? 'locked' : 'pending'}
-                      </span>
-                    )}
-                  </div>
-                ) : null)}
-              </div>
-            )}
-
-            {!is2 && total > 0 && (
-              <div className="h-1.5" style={{background:'#e5e7eb'}}>
-                <div className="h-1.5 transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
-              </div>
-            )}
-
+/* PAGE 1 — UPLOAD */
+function UploadPage({wrestlers,setWrestlers}){
+  const [paste,setPaste]=useState('');
+  const [err,setErr]=useState('');
+  const [editId,setEditId]=useState(null);
+  function imp(text){try{const p=parseCSV(text);if(!p.length)throw new Error('No valid rows found');setWrestlers(p);setErr('');}catch(e){setErr(e.message||'Could not parse.');}}
+  function handleFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>imp(ev.target.result);r.readAsText(f);e.target.value='';}
+  function upd(id,field,val){setWrestlers(wrestlers.map(w=>w.id!==id?w:{...w,[field]:(field==='age'||field==='weight')?(parseFloat(val)||0):val}));}
+  function addRow(){const nw={id:uid(),name:'New Wrestler',age:14,grade:'9th',experience:'Beginner',weight:130};setWrestlers([...wrestlers,nw]);setEditId(nw.id);}
+  function dlSample(){const b=new Blob([SAMPLE_CSV],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sample_wrestlers.csv';a.click();}
+  return(
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>① Upload Wrestlers</h1>
+      <div className="grid md:grid-cols-2 gap-5 mb-8">
+        <div className="bg-white rounded-2xl shadow p-5 border-2 cp-gold-border border-dashed">
+          <h2 className="font-bold mb-3" style={{color:'#111'}}>📁 Upload CSV File</h2>
+          <input type="file" accept=".csv,.txt" onChange={handleFile} className="block w-full text-sm cursor-pointer"/>
+          <p className="text-xs text-gray-400 mt-2">Columns: Name, Age, Grade, Experience, Weight</p>
+          <button onClick={dlSample} className="mt-1 text-xs underline cp-gold-text">↓ Download sample CSV</button>
+        </div>
+        <div className="bg-white rounded-2xl shadow p-5">
+          <h2 className="font-bold mb-3" style={{color:'#111'}}>📋 Paste CSV Data</h2>
+          <textarea className="w-full h-28 border rounded-lg p-2 text-xs font-mono resize-none focus:outline-none" placeholder={"Name,Age,Grade,Experience,Weight\nAlex,14,9th,Beginner,125\n..."} value={paste} onChange={e=>setPaste(e.target.value)}/>
+          <button onClick={()=>imp(paste)} className="mt-2 cp-btn text-sm">Import</button>
+          <button onClick={()=>imp(SAMPLE_CSV)} className="mt-2 ml-2 text-sm border rounded-xl px-4 py-2 hover:bg-gray-50 cp-gold-text cp-gold-border" style={{borderWidth:1}}>Load Sample</button>
+        </div>
+      </div>
+      {err&&<div className="bg-red-50 border border-red-300 text-red-700 rounded-xl p-3 mb-4 text-sm">⚠️ {err}</div>}
+      <div className="bg-white rounded-2xl shadow overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+          <h2 className="font-bold" style={{color:'#111'}}>Wrestler Roster <span className="text-gray-400 font-normal text-sm">({wrestlers.length})</span></h2>
+          <button onClick={addRow} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">+ Add Row</button>
+        </div>
+        {wrestlers.length===0?(
+          <div className="p-12 text-center text-gray-400"><div className="text-4xl mb-3">🐾</div>Upload a CSV, paste data, or load sample data to get started.</div>
+        ):(
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide" style={{background:'#f9fafb',color:'#6b7280'}}>
-                  <th className="text-left px-4 py-2">Place</th>
-                  <th className="text-left px-4 py-2">Wrestler</th>
-                  <th className="text-left px-4 py-2 hidden sm:table-cell">Level</th>
-                  <th className="text-center px-3 py-2 text-green-600">{is2?'Series W':'W'}</th>
-                  <th className="text-center px-3 py-2 text-red-500">{is2?'Series L':'L'}</th>
-                  <th className="text-center px-3 py-2 cp-gold-text">Pins</th>
-                  <th className="text-center px-3 py-2" style={{color:'#111'}}>Pts</th>
-                </tr>
-              </thead>
+              <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">{['Name','Age','Grade','Experience','Weight (lbs)',''].map(h=><th key={h} className="text-left px-4 py-2 font-semibold">{h}</th>)}</tr></thead>
               <tbody>
-                {standings.map((s,i) => {
-                  const seriesW = is2&&bo3 ? (s.wrestler.id===bo3.w1Id?bo3.w1Wins:bo3.w2Wins) : null;
-                  const seriesL = is2&&bo3 ? (s.wrestler.id===bo3.w1Id?bo3.w2Wins:bo3.w1Wins) : null;
-                  return (
-                    <tr key={s.wrestler.id} className="border-t transition-colors"
-                      style={{borderColor:'#f3f4f6',background:i===0&&finished?'#fefce8':'transparent'}}>
-                      <td className="px-4 py-3 text-lg text-center w-14">{ICONS[i]||`${i+1}.`}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">{s.wrestler.name}</td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <div className="flex items-center gap-2">
-                          <Badge text={s.wrestler.experience}/>
-                          <span className="text-xs" style={{color:'#9ca3af'}}>{s.wrestler.weight}lbs · Age {s.wrestler.age}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-center font-bold text-green-700">{is2?seriesW:s.wins}</td>
-                      <td className="px-3 py-3 text-center text-red-400">{is2?seriesL:s.losses}</td>
-                      <td className="px-3 py-3 text-center font-bold cp-gold-text">{s.pins}</td>
-                      <td className="px-3 py-3 text-center font-bold text-xl" style={{color:'#111'}}>{s.points}</td>
-                    </tr>
-                  );
-                })}
+                {wrestlers.map(w=>(
+                  <tr key={w.id} className="border-t hover:bg-gray-50 transition-colors">
+                    {editId===w.id?(
+                      <>
+                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-40 text-sm" value={w.name} onChange={e=>upd(w.id,'name',e.target.value)}/></td>
+                        <td className="px-2 py-1"><input type="number" className="border rounded px-2 py-1 w-16 text-sm" value={w.age} onChange={e=>upd(w.id,'age',e.target.value)}/></td>
+                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-16 text-sm" value={w.grade} onChange={e=>upd(w.id,'grade',e.target.value)}/></td>
+                        <td className="px-2 py-1"><select className="border rounded px-2 py-1 text-sm" value={w.experience} onChange={e=>upd(w.id,'experience',e.target.value)}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></td>
+                        <td className="px-2 py-1"><input type="number" step="0.5" className="border rounded px-2 py-1 w-20 text-sm" value={w.weight} onChange={e=>upd(w.id,'weight',e.target.value)}/></td>
+                        <td className="px-2 py-1"><button onClick={()=>setEditId(null)} className="text-green-600 font-semibold text-xs hover:underline">✓ Done</button></td>
+                      </>
+                    ):(
+                      <>
+                        <td className="px-4 py-2.5 font-medium">{w.name}</td>
+                        <td className="px-4 py-2.5 text-gray-600">{w.age}</td>
+                        <td className="px-4 py-2.5 text-gray-600">{w.grade}</td>
+                        <td className="px-4 py-2.5"><Badge text={w.experience}/></td>
+                        <td className="px-4 py-2.5 font-mono text-gray-700">{w.weight}</td>
+                        <td className="px-4 py-2.5 flex gap-3">
+                          <button onClick={()=>setEditId(w.id)} className="text-xs hover:underline cp-gold-text">Edit</button>
+                          <button onClick={()=>setWrestlers(wrestlers.filter(x=>x.id!==w.id))} className="text-red-400 text-xs hover:underline">Remove</button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
 
-/* SCHEDULE */
-function ScheduleView({ matches }) {
-  if (!matches.length) return <Empty message="Schedule not generated yet." />;
-  const rounds = [...new Set(matches.map(m => m.round))].sort((a,b) => a-b);
-  const mats   = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
-  const schedCountable = countableMatches(matches);
-  const done   = schedCountable.filter(m => m.winner).length;
-  const pct    = schedCountable.length ? Math.round(done/schedCountable.length*100) : 0;
-  const winLabel = m => {
-    if (!m.winner) return null;
-    const name = m.winner===m.w1.id?m.w1.name:m.w2.name;
-    return `${name} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;
-  };
-  return (
-    <div>
-      <div className="bg-white rounded-2xl shadow p-4 mb-6">
-        <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="font-semibold text-gray-700">Tournament Progress</span>
-          <span className="font-bold cp-gold-text">{done} / {schedCountable.length} matches · {pct}%</span>
+/* PAGE 2 — GROUPS */
+function GroupsPage({wrestlers,groups,setGroups,unassigned,setUnassigned,setMatches}){
+  const [moving,setMoving]=useState(null);
+  const [warnings,setWarnings]=useState({});
+  function recheck(grps){const w={};grps.forEach(g=>{const e=validateGroup(g.wrestlers);if(e.length)w[g.id]=e;});setWarnings(w);}
+  function handleGenerate(){const{groups:g,unassigned:u}=generateGroups(wrestlers);setGroups(g);setUnassigned(u);setMatches([]);setWarnings({});setMoving(null);}
+  function finishMove(toId){
+    if(!moving)return;
+    const{fromGroupId,wrestlerId}=moving;
+    let wrestler=null;
+    let nG=groups.map(g=>{if(g.id===fromGroupId){wrestler=g.wrestlers.find(w=>w.id===wrestlerId);return{...g,wrestlers:g.wrestlers.filter(w=>w.id!==wrestlerId)};}return g;});
+    let nU=unassigned;
+    if(!wrestler){wrestler=unassigned.find(w=>w.id===wrestlerId);nU=unassigned.filter(w=>w.id!==wrestlerId);}
+    if(!wrestler){setMoving(null);return;}
+    if(toId==='__new__') nG=[...nG,{id:uid(),label:'',wrestlers:[wrestler]}];
+    else nG=nG.map(g=>g.id===toId?{...g,wrestlers:[...g.wrestlers,wrestler]}:g);
+    const cl=nG.filter(g=>g.wrestlers.length>0);cl.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+    setGroups(cl);setUnassigned(nU);setMatches([]);recheck(cl);setMoving(null);
+  }
+  function eject(groupId,wrestlerId){
+    let wrestler=null;
+    const nG=groups.map(g=>{if(g.id===groupId){wrestler=g.wrestlers.find(w=>w.id===wrestlerId);return{...g,wrestlers:g.wrestlers.filter(w=>w.id!==wrestlerId)};}return g;});
+    if(!wrestler)return;
+    const cl=nG.filter(g=>g.wrestlers.length>0);cl.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+    setGroups(cl);setUnassigned([...unassigned,wrestler]);setMatches([]);recheck(cl);
+  }
+  return(
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{color:'#111'}}>② Bracket Groups</h1>
+          {Object.keys(warnings).length>0&&<p className="text-sm text-red-600 mt-1">⚠️ {Object.keys(warnings).length} group(s) have violations</p>}
         </div>
-        <div className="h-3 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
-          <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
-        </div>
+        <button onClick={handleGenerate} disabled={wrestlers.length<2} className="cp-btn shadow text-sm">⚙️ Auto-Generate Groups ({wrestlers.length} wrestlers)</button>
       </div>
-      {rounds.map(round => (
-        <div key={round} className="mb-7">
-          <div className="flex items-center gap-3 mb-3">
-            <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>Round {round}</h2>
-            <span className="text-sm" style={{color:'#9ca3af'}}>
-              {matches.filter(m=>m.round===round&&m.winner).length} / {matches.filter(m=>m.round===round).length} done
-            </span>
-          </div>
-          <div className={`grid gap-4 ${mats.length>1?'md:grid-cols-2':'grid-cols-1'}`}>
-            {mats.map(mat => {
-              const mm = matches.filter(m => m.round===round && m.mat===mat);
-              if (!mm.length) return null;
-              return (
-                <div key={mat} className="bg-white rounded-2xl shadow p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="text-white font-bold px-3 py-1 rounded-lg text-sm" style={{background:'#111'}}>Mat {mat}</span>
-                    <span className="text-xs" style={{color:'#9ca3af'}}>{mm.filter(m=>m.winner).length}/{mm.length} done</span>
+      {groups.length===0&&unassigned.length===0&&(
+        <div className="cp-info rounded-2xl p-10 text-center">
+          <div className="text-4xl mb-3">⚙️</div>
+          Click <strong>Auto-Generate Groups</strong> to create brackets automatically.
+          <p className="text-xs mt-2 opacity-70">Priority: pure Adv → pure Int → pure Beg → I+A mix → 2B+2I (rare) → 2-person (last resort)</p>
+        </div>
+      )}
+      {moving&&(
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mb-4 text-sm text-yellow-800 flex items-center justify-between">
+          <span>📌 Click a group to move the selected wrestler into it</span>
+          <button onClick={()=>setMoving(null)} className="font-semibold underline ml-4">✕ Cancel</button>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {groups.map(group=>{
+          const errs=warnings[group.id]||[];
+          const isTarget=moving&&moving.fromGroupId!==group.id;
+          const sz=group.wrestlers;
+          const is2=sz.length===2;
+          return(
+            <div key={group.id} onClick={()=>isTarget&&finishMove(group.id)}
+              className={`bg-white rounded-2xl shadow p-4 border-2 transition-all ${errs.length?'border-red-400':isTarget?'border-yellow-400 ring-2 ring-yellow-100 cursor-pointer':is2?'border-orange-300':'border-transparent'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="cp-dark font-bold text-lg w-9 h-9 rounded-full flex items-center justify-center">{group.label}</span>
+                  <span className="text-gray-500 text-sm">{sz.length} wrestlers</span>
+                  {is2&&<span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">2-person</span>}
+                </div>
+                {sz.length>0&&<span className="text-xs text-gray-400 font-mono">{Math.min(...sz.map(w=>w.weight))}–{Math.max(...sz.map(w=>w.weight))} lbs</span>}
+              </div>
+              {errs.length>0&&<div className="bg-red-50 rounded-lg p-2 mb-3 text-xs text-red-700 space-y-0.5">{errs.map((e,i)=><div key={i}>⚠️ {e}</div>)}</div>}
+              <div className="space-y-1">
+                {group.wrestlers.map(w=>(
+                  <div key={w.id} className={`flex items-center justify-between py-1.5 px-2 rounded-lg text-sm ${moving?.wrestlerId===w.id?'bg-yellow-100':'hover:bg-gray-50'}`}>
+                    <div className="flex items-center gap-2 overflow-hidden"><Badge text={w.experience}/><span className="font-medium truncate">{w.name}</span></div>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <span className="text-gray-400 text-xs font-mono">{w.weight}</span>
+                      <span className="text-gray-300 text-xs">· {w.age}y</span>
+                      <button onClick={e=>{e.stopPropagation();setMoving({fromGroupId:group.id,wrestlerId:w.id});}} className="ml-1 text-xs hover:underline cp-gold-text">↕</button>
+                      <button onClick={e=>{e.stopPropagation();eject(group.id,w.id);}} className="text-gray-300 text-xs hover:text-red-400">✕</button>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {mm.map(m => {
-                      const bo3 = m.bo3 ? getBO3State(m.groupId, matches) : null;
-                      const isSkipped = m.bo3decider && bo3 && bo3.seriesOver && !m.winner;
-                      const isLocked  = m.bo3decider && bo3 && !(bo3.m1?.winner && bo3.m2?.winner && bo3.w1Wins===1 && bo3.w2Wins===1) && !m.winner && !isSkipped;
-                      return (
-                        <div key={m.id} className="px-3 py-2.5 rounded-xl text-sm"
-                          style={{background: isSkipped?'#f9fafb': isLocked?'#f9fafb': m.winner?'#fefce8':'#f9fafb',
-                                  border: isLocked||isSkipped?'1px dashed #e5e7eb':'none',
-                                  opacity: isLocked||isSkipped ? 0.6 : 1}}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
-                            {m.bo3 && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0" style={{background: m.bo3decider?'#dcfce7':'#f3f4f6', color: m.bo3decider?'#166534':'#9ca3af', fontSize:'.6rem', fontWeight:700}}>
-                                {isSkipped ? 'M3 — Not needed' : isLocked ? 'M3 — Locked' : m.bo3decider ? '🏆 M3 — Tiebreaker' : `M${m.round}`}
-                              </span>
-                            )}
-                            {!isSkipped && !isLocked && <>
-                              <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':'text-gray-900'}`}>{m.w1.name}</span>
-                              <span className="font-bold text-xs shrink-0" style={{color:'#d1d5db'}}>VS</span>
-                              <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':'text-gray-900'}`}>{m.w2.name}</span>
-                              {m.winner?<span className="text-green-500 shrink-0">✓</span>:<span className="text-xs shrink-0" style={{color:'#ccc'}}>—</span>}
-                            </>}
+                ))}
+              </div>
+              {sz.length>0&&(
+                <div className="mt-3 pt-2 border-t flex gap-2 text-xs text-gray-400">
+                  <span>🎂 Age {Math.min(...sz.map(w=>w.age))}–{Math.max(...sz.map(w=>w.age))}</span><span>·</span>
+                  <span className={errs.length?'text-red-400':'text-green-600'}>{errs.length?'✗ Invalid':'✓ Valid'}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {moving&&(
+          <div onClick={()=>finishMove('__new__')} className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-yellow-400 hover:bg-yellow-50 transition-all min-h-36">
+            <span className="text-gray-400 text-sm font-medium">+ New Group</span>
+          </div>
+        )}
+      </div>
+      {unassigned.length>0&&(
+        <div className="mt-6 bg-orange-50 rounded-2xl border border-orange-200 p-5">
+          <h2 className="font-bold text-orange-800 mb-1">⚠️ Unassigned Wrestlers ({unassigned.length})</h2>
+          <p className="text-xs text-orange-600 mb-3">Couldn't be placed automatically. Use ↕ to move them manually.</p>
+          <div className="flex flex-wrap gap-2">
+            {unassigned.map(w=>(
+              <div key={w.id} className={`bg-white border rounded-xl px-3 py-2 text-sm flex items-center gap-2 shadow-sm ${moving?.wrestlerId===w.id?'border-yellow-400 bg-yellow-50':'border-orange-200'}`}>
+                <Badge text={w.experience}/><span className="font-medium">{w.name}</span>
+                <span className="text-gray-400 text-xs font-mono">{w.weight}lbs · {w.age}y</span>
+                <button onClick={()=>setMoving({fromGroupId:'__unassigned__',wrestlerId:w.id})} className="text-xs hover:underline cp-gold-text">↕ Move</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* PAGE 3 — SCHEDULE */
+function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
+  const [moving,setMoving]=useState(null); // {matchId, fromMat}
+
+  const allMats=[...Array(numMats)].map((_,i)=>i+1);
+  const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
+  const schedCountable=countableMatches(matches);
+  const done=schedCountable.filter(m=>m.winner).length;
+  const winLabel=m=>{if(!m.winner)return null;const n=m.winner===m.w1.id?m.w1.name:m.w2.name;return `${n} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;};
+
+  // Move only the single selected match to the target mat
+  function moveMatchToMat(matchId, toMat){
+    setMatches(matches.map(m=>m.id===matchId?{...m,mat:toMat}:m));
+    setMoving(null);
+  }
+
+  const movingMatch = moving ? matches.find(m=>m.id===moving.matchId) : null;
+
+  return(
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex items-center gap-4 mb-5 flex-wrap">
+        <h1 className="text-2xl font-bold" style={{color:'#111'}}>③ Match Schedule</h1>
+        <div className="flex items-center gap-2 bg-white rounded-xl shadow px-3 py-2">
+          <label className="text-sm font-medium text-gray-600">Mats:</label>
+          <select value={numMats} onChange={e=>{setNumMats(parseInt(e.target.value));setMoving(null);}} className="border-0 text-sm font-bold focus:outline-none bg-transparent">
+            {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <button onClick={()=>{setMatches(generateSchedule(groups,numMats));setMoving(null);}} disabled={groups.length===0} className="cp-btn text-sm shadow">📋 Generate Schedule</button>
+        {matches.length>0&&<span className="text-sm text-gray-500 ml-auto">{done}/{schedCountable.length} completed</span>}
+      </div>
+
+      {matches.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">📋</div>{groups.length===0?'Create groups first (Step ②).':'Click Generate Schedule.'}</div>
+      ):(
+        <>
+          {/* Moving banner */}
+          {moving&&movingMatch&&(
+            <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mb-5 flex items-center justify-between flex-wrap gap-2">
+              <div className="text-sm text-yellow-800">
+                <strong>Moving {movingMatch.w1.name} vs {movingMatch.w2.name}</strong> (Group {movingMatch.groupLabel}, Round {movingMatch.round}) — click a mat column to move just this match
+              </div>
+              <button onClick={()=>setMoving(null)} className="text-yellow-900 font-bold underline text-sm">✕ Cancel</button>
+            </div>
+          )}
+
+          {/* Side-by-side mat columns */}
+          <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
+            {allMats.map(mat=>{
+              const matMatchCount=matches.filter(m=>m.mat===mat).length;
+              const matDone=matches.filter(m=>m.mat===mat&&m.winner).length;
+              const isDropTarget=moving&&movingMatch&&movingMatch.mat!==mat;
+
+              return(
+                <div key={mat}
+                  onClick={()=>isDropTarget&&moveMatchToMat(moving.matchId,mat)}
+                  className={`flex-shrink-0 rounded-2xl overflow-hidden shadow-lg transition-all ${
+                    isDropTarget
+                      ? 'ring-4 ring-yellow-400 cursor-pointer scale-[1.01]'
+                      : ''
+                  }`}
+                  style={{minWidth:300,width:300,background:'#f8f8f8',border:isDropTarget?'2px solid #C9A227':'2px solid #e5e7eb'}}>
+
+                  {/* Mat header */}
+                  <div className="text-white text-center py-3 px-4 relative" style={{background:'#111'}}>
+                    <div className="font-black text-xl tracking-wide">Mat {mat}</div>
+                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matMatchCount} done</div>
+                    {isDropTarget&&(
+                      <div className="absolute inset-0 flex items-center justify-center rounded-t-2xl" style={{background:'rgba(201,162,39,0.15)'}}>
+                        <span className="font-black text-yellow-400 text-base">↓ Move here</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rounds within mat */}
+                  <div className="p-3">
+                    {rounds.map(round=>{
+                      const mm=matches.filter(m=>m.round===round&&m.mat===mat);
+                      if(!mm.length)return null;
+                      const rDone=mm.filter(m=>m.winner).length;
+                      return(
+                        <div key={round} className="mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-xs text-white px-3 py-1 rounded-full" style={{background:'#333'}}>Round {round}</span>
+                            <span className="text-xs text-gray-400">{rDone}/{mm.length}</span>
                           </div>
-                          {m.winner && <div className="text-xs mt-1.5 pl-1 font-medium cp-gold-text">🏆 {winLabel(m)}</div>}
+                          <div className="space-y-2">
+                            {mm.map(m=>{
+                              const isBeingMoved=moving?.matchId===m.id;
+                              return(
+                                <div key={m.id}
+                                  className={`px-3 py-2.5 rounded-xl text-sm border-2 transition-all ${
+                                    isBeingMoved
+                                      ? 'border-yellow-400 bg-yellow-50'
+                                      : m.winner
+                                      ? 'bg-green-50 border-transparent'
+                                      : 'bg-white border-gray-100 shadow-sm'
+                                  }`}>
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
+                                    {/* Move button — moves just this match */}
+                                    {!moving&&(
+                                      <button
+                                        onClick={e=>{e.stopPropagation();setMoving({matchId:m.id,fromMat:m.mat});}}
+                                        title="Move this match to another mat"
+                                        className="ml-auto text-xs px-2 py-0.5 rounded-lg font-semibold border transition-all hover:border-yellow-400 hover:text-yellow-700"
+                                        style={{color:'#999',borderColor:'#ddd',background:'#fafafa'}}>
+                                        ↔ Move
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
+                                    <span className="text-gray-300 font-bold shrink-0">vs</span>
+                                    <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
+                                    {m.winner?<span className="text-green-500 shrink-0 ml-1">✓</span>:<span className="text-gray-300 shrink-0 ml-1">—</span>}
+                                  </div>
+                                  {m.winner&&<div className="text-xs mt-1 cp-gold-text">🏆 {winLabel(m)}</div>}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })}
+                    {matMatchCount===0&&(
+                      <div className={`text-center text-xs py-8 rounded-xl ${isDropTarget?'text-yellow-600 font-semibold':'text-gray-400'}`}>
+                        {isDropTarget?'↓ Drop group here':'No matches assigned'}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-      ))}
+        </>
+      )}
     </div>
   );
 }
 
-/* DISCLAIMER MODAL */
-function DisclaimerModal({ onAccept }) {
-  return (
-    <div className="modal-overlay">
-      <div className="modal-card">
+/* PAGE 4 — RESULTS */
+function MatchCard({m, pick, undo, bo3State}){
+  const wName = m.winner ? (m.winner===m.w1.id ? m.w1.name : m.w2.name) : null;
 
-        {/* Header */}
-        <div className="modal-header">
-          <div className="flex items-center gap-3 mb-1">
-            <span style={{fontSize:'1.6rem'}}>🐾</span>
-            <div>
-              <div className="font-black text-white tracking-widest text-lg" style={{letterSpacing:'.1em'}}>CLUB PAW</div>
-              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER WRESTLING CLUB</div>
-            </div>
+  // BO3 decider: only unlocked if rounds 1+2 both done AND tied 1-1
+  const isLocked = m.bo3decider && bo3State && !(bo3State.m1?.winner && bo3State.m2?.winner && bo3State.w1Wins===1 && bo3State.w2Wins===1);
+  // BO3 match 2: locked if round 1 not done yet, or series already over after round 1 (impossible but safe)
+  const isMatch2Locked = m.bo3 && m.round===2 && bo3State && !bo3State.m1?.winner;
+  // Series already decided — this match is skipped
+  const isSkipped = m.bo3decider && bo3State && bo3State.m1?.winner && bo3State.m2?.winner && bo3State.seriesOver && !m.winner;
+
+  if (isSkipped) {
+    return (
+      <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 p-3 mb-3 text-center">
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full mr-2" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
+        <span className="text-xs text-gray-400">Match 3 — Not needed ✓</span>
+        {bo3State.seriesWinnerId && (
+          <div className="text-xs mt-1 text-green-600 font-semibold">
+            Series won by {bo3State.seriesWinnerId===m.w1.id?m.w1.name:m.w2.name}
           </div>
-          <div className="mt-3 font-bold text-white text-xl">Tournament Viewer</div>
-          <div className="text-sm mt-0.5" style={{color:'#9ca3af'}}>Please review and accept before entering</div>
+        )}
+      </div>
+    );
+  }
+
+  if (isLocked || isMatch2Locked) {
+    return (
+      <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 p-3 mb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
+          <span className="text-xs text-gray-400">
+            {m.bo3decider ? 'Match 3 — Tiebreaker (unlocks if 1-1)' : 'Match 2 — Waiting for Match 1'}
+          </span>
         </div>
+        <div className="text-xs text-gray-400 text-center py-1">{m.w1.name} vs {m.w2.name}</div>
+      </div>
+    );
+  }
 
-        {/* Body */}
-        <div className="modal-body">
-          <div className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider">Spectator Guidelines &amp; Disclaimer</div>
-
-          <div>
-            {[
-              { icon:'🤼', text:'This tournament is recreational in nature and is designed to provide a positive, fun, and safe competitive experience for all participants.' },
-              { icon:'👏', text:'We ask all spectators to model positive sportsmanship — encourage all athletes on the mat, regardless of affiliation. Negative comments directed at competitors, coaches, or officials will not be tolerated.' },
-              { icon:'🙏', text:'This event is organized and run entirely by volunteers. We appreciate your patience and understanding as we work to give every wrestler a great experience.' },
-              { icon:'⏱️', text:'Match format consists of three 45-second periods. Format may be adjusted at the discretion of tournament staff as the event progresses.' },
-              { icon:'📋', text:'All bracket placements, scheduling, and officiating decisions are final and made by tournament staff.' },
-            ].map((item, i) => (
-              <div key={i} className="rule-item">
-                <span className="rule-icon">{item.icon}</span>
-                <span className="text-sm text-gray-600 leading-relaxed">{item.text}</span>
+  return(
+    <div className={`bg-white rounded-xl shadow border-2 p-3 transition-all mb-3 ${
+      m.winner ? (m.bo3decider?'border-green-500':'border-yellow-400') : 'border-gray-100'
+    }`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
+          {m.bo3 && (
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{background: m.bo3decider?'#dcfce7':'#f3f4f6', color: m.bo3decider?'#166534':'#6b7280'}}>
+              {m.bo3decider ? '🏆 Match 3' : `Match ${m.round}`}
+            </span>
+          )}
+          {m.bo3 && bo3State && (
+            <span className="text-xs text-gray-400 ml-1">
+              ({bo3State.w1Wins}-{bo3State.w2Wins})
+            </span>
+          )}
+        </div>
+        {m.winner&&<button onClick={()=>undo(m.id)} className="text-xs text-gray-400 hover:text-red-500 underline">Undo</button>}
+      </div>
+      {m.winner?(
+        <div className="rounded-lg p-2.5 text-center" style={{background: m.bo3decider?'#f0fdf4':'#fef9e7', border:`1px solid ${m.bo3decider?'#86efac':'#C9A227'}`}}>
+          <div className="font-bold text-sm">🏆 {wName}</div>
+          <div className="text-xs mt-0.5" style={{color: m.bo3decider?'#16a34a':'#C9A227'}}>
+            {m.bo3decider ? 'Series Winner — ' : ''}{m.winType==='pin'?'Pin — 6 pts':'Points — 4 pts'}
+          </div>
+        </div>
+      ):(
+        <div>
+          <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wider">Select winner:</p>
+          <div className="flex flex-col gap-2">
+            {[m.w1,m.w2].map(wrestler=>(
+              <div key={wrestler.id} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                <div className="font-bold text-xs mb-0.5">{wrestler.name}</div>
+                <div className="text-xs text-gray-400 mb-1.5">{wrestler.weight}lbs · {wrestler.experience[0]} · Age {wrestler.age}</div>
+                <div className="flex gap-1.5">
+                  <button onClick={()=>pick(m.id,wrestler.id,'pin')}
+                    className="flex-1 text-xs font-bold py-1.5 rounded-lg pin-btn">📌 Pin (6)</button>
+                  <button onClick={()=>pick(m.id,wrestler.id,'points')}
+                    className="flex-1 text-xs font-bold py-1.5 rounded-lg pts-btn">✓ Pts (4)</button>
+                </div>
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-          <div className="mt-4 rounded-xl p-3 text-xs text-gray-500 leading-relaxed" style={{background:'#fefce8',border:'1px solid #C9A227'}}>
-            By tapping <strong>"I Understand — Enter Viewer"</strong> below, you acknowledge these guidelines and agree to conduct yourself in a manner consistent with the values of Club Paw.
+function ResultsPage({matches,setMatches}){
+  const [filter,setFilter]=useState('all');
+  const pick=(id,wId,type)=>setMatches(matches.map(m=>m.id===id?{...m,winner:wId,winType:type}:m));
+  const undo=(id)=>setMatches(matches.map(m=>m.id===id?{...m,winner:null,winType:null}:m));
+  const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
+  const mats=[...new Set(matches.map(m=>m.mat))].sort((a,b)=>a-b);
+  const countable=countableMatches(matches);
+  const done=countable.filter(m=>m.winner).length;
+  const pct=countable.length?Math.round(done/countable.length*100):0;
+
+  const visible=(m)=>{
+    if(filter==='pending')   return !m.winner;
+    if(filter==='completed') return !!m.winner;
+    return true;
+  };
+
+  return(
+    <div className="p-4 max-w-full mx-auto">
+      <h1 className="text-2xl font-bold mb-4" style={{color:'#111'}}>④ Live Results Entry</h1>
+      {matches.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center max-w-lg mx-auto"><div className="text-4xl mb-3">🎯</div>Generate a schedule first (Step ③).</div>
+      ):(
+        <>
+          {/* Progress bar */}
+          <div className="bg-white rounded-2xl shadow p-4 mb-5">
+            <div className="flex items-center justify-between mb-2 text-sm">
+              <span className="font-semibold" style={{color:'#111'}}>Tournament Progress</span>
+              <span className="font-bold cp-gold-text">{done} / {countable.length} · {pct}%</span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex gap-2">
+                {['all','pending','completed'].map(f=>(
+                  <button key={f} onClick={()=>setFilter(f)} className="px-3 py-1 rounded-lg text-xs font-medium capitalize"
+                    style={filter===f?{background:'#C9A227',color:'#111'}:{background:'#f3f4f6',color:'#555'}}>{f}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#111'}}></span> Pin=6pts</span>
+                <span className="flex items-center gap-1"><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#4ade80'}}></span> Pts=4pts</span>
+              </div>
+            </div>
           </div>
+
+          {/* Mat columns — one column per mat, rounds stack inside each */}
+          <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
+            {mats.map(mat=>{
+              // Only count matches that are actually needed (exclude skipped BO3 match 3s)
+              const matCountable=countableMatches(matches).filter(m=>m.mat===mat);
+              const matDone=matCountable.filter(m=>m.winner).length;
+              const matTotal=matCountable.length;
+              const allMatDone=matTotal>0&&matDone===matTotal;
+              // For display: use countable matches filtered by pending/completed
+              const matMatches=matCountable.filter(m=>visible(m));
+              return(
+                <div key={mat} className="flex-shrink-0 rounded-2xl overflow-hidden shadow-lg"
+                  style={{minWidth:320,width:320,background:'#f8f8f8',border:'2px solid #e5e7eb'}}>
+                  {/* Mat header */}
+                  <div className="text-white text-center py-3 px-4" style={{background:'#111'}}>
+                    <div className="font-black text-xl tracking-wide">Mat {mat}</div>
+                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matTotal} matches done</div>
+                  </div>
+
+                  {/* Rounds within this mat */}
+                  <div className="p-3">
+                    {!allMatDone&&rounds.map(round=>{
+                      const rm=matMatches.filter(m=>m.round===round);
+                      if(!rm.length) return null;
+                      const rDone=matCountable.filter(m=>m.round===round&&m.winner).length;
+                      const rTotal=matCountable.filter(m=>m.round===round).length;
+                      return(
+                        <div key={round} className="mb-4">
+                          <div className="flex items-center gap-2 mb-2 px-1">
+                            <span className="font-bold text-sm text-white px-3 py-1 rounded-full" style={{background:'#333'}}>
+                              Round {round}
+                            </span>
+                            <span className="text-xs text-gray-400">{rDone}/{rTotal}</span>
+                          </div>
+                          {rm.map(m=>{
+                        const bo3State=m.bo3?getBO3State(m.groupId,matches):null;
+                        return <MatchCard key={m.id} m={m} pick={pick} undo={undo} bo3State={bo3State}/>;
+                      })}
+                        </div>
+                      );
+                    })}
+                    {(allMatDone||matMatches.length===0)&&(
+                      <div className="text-center py-8">
+                        {allMatDone
+                          ? <><div className="text-3xl mb-2">✅</div><p className="font-bold text-green-600 text-sm">All matches complete!</p></>
+                          : <p className="text-gray-400 text-xs">No matches yet</p>
+                        }
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* PAGE 5 — STANDINGS */
+function StandingsPage({groups,matches}){
+  const ICONS=['🥇','🥈','🥉','4th'];
+  return(
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>⑤ Standings &amp; Placements</h1>
+      {groups.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">🏆</div>No groups yet. Complete steps ①–③ first.</div>
+      ):(
+        <div className="space-y-6">
+          {groups.map(group=>{
+            const is2=group.wrestlers.length===2;
+            const standings=computeStandings(group,matches);
+            const gm=matches.filter(m=>m.groupId===group.id);
+            const bo3=is2?getBO3State(group.id,matches):null;
+
+            // For BO3: count only played matches toward total/completed
+            const playedMatches = is2
+              ? gm.filter(m=>!m.bo3decider||(bo3&&bo3.w1Wins===1&&bo3.w2Wins===1)||m.winner)
+              : gm;
+            const total=is2?(bo3&&bo3.seriesOver?gm.filter(m=>m.winner).length+(bo3.seriesOver&&!bo3.m3?.winner?0:0):gm.filter(m=>!m.bo3decider||m.winner).length):gm.length;
+            const completed=gm.filter(m=>m.winner).length;
+
+            // Series finished = someone won 2
+            const finished = is2 ? (bo3&&bo3.seriesOver) : (total>0&&completed===total);
+
+            // Series score label
+            const seriesLabel = is2 && bo3 ? `${bo3.w1Wins}–${bo3.w2Wins}` : null;
+            const seriesWinner = is2 && bo3 && bo3.seriesWinnerId
+              ? (bo3.seriesWinnerId===group.wrestlers[0].id ? group.wrestlers[0].name : group.wrestlers[1].name)
+              : null;
+
+            return(
+              <div key={group.id} className="bg-white rounded-2xl shadow overflow-hidden">
+                <div className="cp-dark px-5 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-lg">Group {group.label}</h2>
+                    {is2&&<span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{background:'#C9A227',color:'#111'}}>Best of 3</span>}
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    {is2&&seriesLabel&&<span className="cp-gold-text font-bold">Series: {seriesLabel}</span>}
+                    {!is2&&<span className="cp-gold-text">{completed}/{total} matches</span>}
+                    {finished&&<span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                      {is2&&seriesWinner?`${seriesWinner} wins!`:'FINAL'}
+                    </span>}
+                  </div>
+                </div>
+                {is2&&bo3&&(
+                  <div className="px-5 py-2 flex items-center gap-4 text-xs border-b bg-gray-50">
+                    {[bo3.m1,bo3.m2,bo3.m3].map((m,i)=>m?(
+                      <div key={i} className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+                        !m.winner&&m.bo3decider&&!(bo3.w1Wins===1&&bo3.w2Wins===1)?'opacity-30':''
+                      }`} style={{background:m.winner?(m.bo3decider?'#dcfce7':'#fef9e7'):'#f3f4f6'}}>
+                        <span className="font-bold" style={{color:'#666'}}>M{i+1}</span>
+                        {m.winner?(
+                          <span className="font-semibold" style={{color:m.bo3decider?'#16a34a':'#C9A227'}}>
+                            → {m.winner===m.w1.id?m.w1.name:m.w2.name}
+                          </span>
+                        ):(
+                          <span style={{color:'#aaa'}}>{m.bo3decider&&!(bo3.w1Wins===1&&bo3.w2Wins===1)?'locked':'pending'}</span>
+                        )}
+                      </div>
+                    ):null)}
+                  </div>
+                )}
+                {!is2&&total>0&&<div className="h-1 bg-gray-100"><div className="h-1 transition-all" style={{width:(completed/total*100)+'%',background:'#C9A227'}}/></div>}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                      <th className="text-left px-4 py-2">Place</th>
+                      <th className="text-left px-4 py-2">Wrestler</th>
+                      <th className="text-left px-4 py-2 hidden sm:table-cell">Details</th>
+                      <th className="text-center px-3 py-2 text-green-700">{is2?'Series W':'W'}</th>
+                      <th className="text-center px-3 py-2 text-red-500">{is2?'Series L':'L'}</th>
+                      <th className="text-center px-3 py-2" style={{color:'#C9A227'}}>Pins</th>
+                      <th className="text-center px-3 py-2" style={{color:'#111'}}>Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {standings.map((s,i)=>{
+                      // For BO3, wins = match wins in the series
+                      const seriesWins = is2&&bo3 ? (s.wrestler.id===bo3.w1Id?bo3.w1Wins:bo3.w2Wins) : null;
+                      const seriesLosses = is2&&bo3 ? (s.wrestler.id===bo3.w1Id?bo3.w2Wins:bo3.w1Wins) : null;
+                      return(
+                        <tr key={s.wrestler.id} className={`border-t transition-colors ${i===0&&finished?'bg-yellow-50':''}`}>
+                          <td className="px-4 py-3 text-lg w-14 text-center">{ICONS[i]||`${i+1}.`}</td>
+                          <td className="px-4 py-3 font-semibold">{s.wrestler.name}</td>
+                          <td className="px-4 py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Badge text={s.wrestler.experience}/><span className="text-gray-400 text-xs">{s.wrestler.weight}lbs · Age {s.wrestler.age} · {s.wrestler.grade}</span></div></td>
+                          <td className="px-3 py-3 text-center font-bold text-green-700">{is2?seriesWins:s.wins}</td>
+                          <td className="px-3 py-3 text-center text-red-400">{is2?seriesLosses:s.losses}</td>
+                          <td className="px-3 py-3 text-center font-bold cp-gold-text">{s.pins}</td>
+                          <td className="px-3 py-3 text-center font-bold text-xl" style={{color:'#111'}}>{s.points}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* PAGE 6 — RESET */
+function ResetPage({setWrestlers,setGroups,setUnassigned,setMatches,setNumMats,setPage}){
+  const [step,setStep]=useState('idle'); // idle | confirm | done
+
+  function doReset(){
+    setWrestlers([]);
+    setGroups([]);
+    setUnassigned([]);
+    setMatches([]);
+    setNumMats(2);
+    // Clear all data in Firebase
+    try{
+      db.ref('clubpaw').set({wrestlers:[],groups:[],unassigned:[],matches:[],numMats:2});
+    }catch(_){}
+    setStep('done');
+  }
+
+  return(
+    <div className="p-6 max-w-lg mx-auto mt-10">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-red-200">
+        <div className="bg-red-600 px-6 py-4">
+          <h1 className="text-xl font-bold text-white">⑥ Reset Tournament</h1>
+          <p className="text-red-200 text-sm mt-1">Clear all data and start fresh</p>
         </div>
 
-        {/* Footer */}
-        <div className="modal-footer">
-          <button className="accept-btn" onClick={onAccept}>
-            I Understand — Enter Viewer →
-          </button>
-          <p className="text-center text-xs text-gray-400 mt-3">
-            Thank you for supporting Rochester Club Paw Wrestling 🐾
-          </p>
-        </div>
+        <div className="p-6">
+          {step==='idle'&&(
+            <>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                This will permanently erase <strong>all wrestlers, groups, matches, and results</strong> saved in this browser. The app will return to a blank state.
+              </p>
+              <ul className="text-sm text-gray-500 mb-8 space-y-1.5">
+                {['All uploaded wrestlers','All bracket groups','The full match schedule','All results and scores'].map(item=>(
+                  <li key={item} className="flex items-center gap-2"><span className="text-red-400 font-bold">✕</span>{item}</li>
+                ))}
+              </ul>
+              <button
+                onClick={()=>setStep('confirm')}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                Reset Tournament Data
+              </button>
+            </>
+          )}
 
+          {step==='confirm'&&(
+            <>
+              <div className="bg-red-50 border-2 border-red-400 rounded-xl p-5 mb-6 text-center">
+                <div className="text-4xl mb-2">⚠️</div>
+                <p className="font-bold text-red-800 text-lg">Are you sure?</p>
+                <p className="text-red-600 text-sm mt-1">This cannot be undone. All tournament data will be lost.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={()=>setStep('idle')}
+                  className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                  Cancel — Keep Data
+                </button>
+                <button
+                  onClick={doReset}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                  Yes, Reset Everything
+                </button>
+              </div>
+            </>
+          )}
+
+          {step==='done'&&(
+            <div className="text-center py-4">
+              <div className="text-5xl mb-4">✅</div>
+              <p className="font-bold text-gray-800 text-lg mb-1">Tournament Reset</p>
+              <p className="text-gray-500 text-sm mb-6">All data has been cleared. Ready for a new tournament.</p>
+              <button
+                onClick={()=>setPage('upload')}
+                className="cp-btn px-8 py-3 text-sm">
+                Start New Tournament →
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 /* ROOT */
-function App() {
-  const [accepted, setAccepted]       = useState(false);
-  const [page, setPage]               = useState('now');
-  const [groups, setGroups]           = useState([]);
-  const [matches, setMatches]         = useState([]);
-  const [lastUpdated, setLastUpdated] = useState('Connecting...');
+function App(){
+  const [dbReady,setDbReady]=useState(false);
+  const [page,setPage]=useState('upload');
+  const [wrestlers,setWrestlers]=useState([]);
+  const [groups,setGroups]=useState([]);
+  const [unassigned,setUnassigned]=useState([]);
+  const [matches,setMatches]=useState([]);
+  const [numMats,setNumMats]=useState(2);
 
-  useEffect(() => {
-    // Real-time listener — updates instantly when admin enters results
-    const ref = db.ref('clubpaw');
-    ref.on('value', snap => {
-      const d = snap.val() || {};
-      setGroups(d.groups || []);
-      setMatches(d.matches || []);
-      const now = new Date();
-      setLastUpdated(now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
-    });
-    return () => ref.off('value'); // cleanup on unmount
-  }, []);
+  // Load all data from Firebase once on mount
+  useEffect(()=>{
+    db.ref('clubpaw').once('value').then(snap=>{
+      const d=snap.val()||{};
+      setWrestlers(d.wrestlers||[]);
+      setGroups(d.groups||[]);
+      setUnassigned(d.unassigned||[]);
+      setMatches(d.matches||[]);
+      setNumMats(d.numMats||2);
+      setDbReady(true);
+    }).catch(()=>setDbReady(true));
+  },[]);
 
-  return (
-    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
-      {!accepted && <DisclaimerModal onAccept={() => setAccepted(true)} />}
-      <Nav page={page} setPage={setPage} lastUpdated={lastUpdated} />
-      <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
-        👁 VIEW ONLY — Updates in real-time
+  // Sync state to Firebase after initial load
+  useEffect(()=>{ if(dbReady) save('wrestlers',wrestlers); },[wrestlers]);
+  useEffect(()=>{ if(dbReady) save('groups',groups); },[groups]);
+  useEffect(()=>{ if(dbReady) save('unassigned',unassigned); },[unassigned]);
+  useEffect(()=>{ if(dbReady) save('matches',matches); },[matches]);
+  useEffect(()=>{ if(dbReady) save('numMats',numMats); },[numMats]);
+
+  if(!dbReady) return(
+    <div className="min-h-screen flex items-center justify-center" style={{background:'#f3f4f6'}}>
+      <div className="text-center bg-white rounded-2xl shadow p-12">
+        <div className="text-5xl mb-4">🐾</div>
+        <p className="font-bold text-gray-700 text-lg mb-1">Loading tournament data...</p>
+        <p className="text-gray-400 text-sm">Connecting to Firebase</p>
+        <div className="mt-4 h-1.5 w-48 bg-gray-100 rounded-full mx-auto overflow-hidden">
+          <div className="h-1.5 rounded-full animate-pulse" style={{width:'60%',background:'#C9A227'}}/>
+        </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 py-6 pb-12">
-        {page==='now'       && <NowWrestlingView matches={matches} />}
-        {page==='standings' && <StandingsView    groups={groups} matches={matches} />}
-        {page==='schedule'  && <ScheduleView     matches={matches} />}
+    </div>
+  );
+
+  return(
+    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
+      <Nav page={page} setPage={setPage} wrestlers={wrestlers} groups={groups}/>
+      <div className="pb-12">
+        {page==='upload'    && <UploadPage    wrestlers={wrestlers}  setWrestlers={setWrestlers}/>}
+        {page==='groups'    && <GroupsPage    wrestlers={wrestlers}  groups={groups} setGroups={setGroups} unassigned={unassigned} setUnassigned={setUnassigned} setMatches={setMatches}/>}
+        {page==='schedule'  && <SchedulePage  groups={groups} numMats={numMats} setNumMats={setNumMats} matches={matches} setMatches={setMatches}/>}
+        {page==='results'   && <ResultsPage   matches={matches} setMatches={setMatches}/>}
+        {page==='standings' && <StandingsPage groups={groups} matches={matches}/>}
+        {page==='reset'     && <ResetPage setWrestlers={setWrestlers} setGroups={setGroups} setUnassigned={setUnassigned} setMatches={setMatches} setNumMats={setNumMats} setPage={setPage}/>}
       </div>
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
