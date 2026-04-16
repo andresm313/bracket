@@ -3,162 +3,151 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wrestling Tournament Manager</title>
+  <title>Rochester Club Paw — Tournament Manager</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
+    body{background:#f3f4f6;}
+    .cp-nav{background:var(--black);}
+    .cp-dark{background:var(--black);color:#fff;}
+    .cp-gold{background:var(--gold);color:var(--black);}
+    .cp-gold-text{color:var(--gold);}
+    .cp-gold-border{border-color:var(--gold)!important;}
+    .cp-btn{background:var(--gold);color:var(--black);font-weight:700;border-radius:.75rem;padding:.5rem 1.25rem;transition:background .15s;border:0;cursor:pointer;}
+    .cp-btn:hover{background:var(--gold-dk);}
+    .cp-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .cp-nav-active{background:var(--gold);color:var(--black)!important;font-weight:700;}
+    .cp-nav-inactive{color:#d4b483;}
+    .cp-nav-inactive:hover{background:#222;}
+    .cp-info{background:#fefce8;border:1px solid var(--gold);color:#78350f;}
+    .pin-btn{background:#111;color:#C9A227;border:2px solid #C9A227;border-radius:.5rem;padding:.4rem .75rem;font-weight:700;cursor:pointer;width:100%;transition:background .1s;}
+    .pin-btn:hover{background:#222;}
+    .pts-btn{background:#fff;color:#111;border:2px solid #ddd;border-radius:.5rem;padding:.4rem .75rem;font-weight:700;cursor:pointer;width:100%;transition:all .1s;}
+    .pts-btn:hover{background:#f3f4f6;border-color:#999;}
+    .badge-b{background:#d1fae5;color:#065f46;}
+    .badge-i{background:#fef3c7;color:#92400e;}
+    .badge-a{background:#fee2e2;color:#991b1b;}
+    input[type=file]::file-selector-button{background:#C9A227;color:#111;font-weight:700;border:0;padding:.4rem .9rem;border-radius:.5rem;cursor:pointer;margin-right:.75rem;}
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-function combinations(arr, k) {
-  if (k > arr.length || k <= 0) return [];
-  if (k === arr.length) return [[...arr]];
-  if (k === 1) return arr.map(el => [el]);
-  const result = [];
-  for (let i = 0; i <= arr.length - k; i++) {
-    const rest = combinations(arr.slice(i + 1), k - 1);
-    rest.forEach(c => result.push([arr[i], ...c]));
-  }
-  return result;
+function combinations(arr,k){
+  if(k>arr.length||k<=0)return[];
+  if(k===arr.length)return[[...arr]];
+  if(k===1)return arr.map(el=>[el]);
+  const r=[];
+  for(let i=0;i<=arr.length-k;i++) combinations(arr.slice(i+1),k-1).forEach(c=>r.push([arr[i],...c]));
+  return r;
 }
+function uid(){return Math.random().toString(36).slice(2,10);}
+const save=(k,v)=>{try{localStorage.setItem('cp_'+k,JSON.stringify(v));}catch(_){}};
+const load=(k,fb)=>{try{const s=localStorage.getItem('cp_'+k);return s?JSON.parse(s):fb;}catch(_){return fb;}};
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function validateGroup(wrestlers) {
-  const errors = [];
-  if (wrestlers.length < 2) return errors;
-  const weights = wrestlers.map(w => w.weight);
-  const ages    = wrestlers.map(w => w.age);
-  const maxW = Math.max(...weights), minW = Math.min(...weights);
-  const maxA = Math.max(...ages),    minA = Math.min(...ages);
-  if (maxW - minW > 10)
-    errors.push(`Weight spread ${minW}–${maxW} lbs exceeds 10 lb limit`);
-  if (maxA - minA > 1)
-    errors.push(`Age gap ${minA}–${maxA} years exceeds 1-year limit`);
-  const hasB = wrestlers.some(w => w.experience === 'Beginner');
-  const hasA = wrestlers.some(w => w.experience === 'Advanced');
-  const hasI = wrestlers.some(w => w.experience === 'Intermediate');
-  if (hasB && hasA)
-    errors.push('Beginners cannot wrestle Advanced wrestlers');
-  if (hasI && hasA) {
-    const youngI = wrestlers.find(w => w.experience === 'Intermediate' && w.age < 14);
-    if (youngI)
-      errors.push(`${youngI.name} (Intermediate, age ${youngI.age}) must be 14+ to wrestle Advanced`);
+/* VALIDATION */
+function validateGroup(wrestlers){
+  const errors=[];
+  if(wrestlers.length<2)return errors;
+  const wts=wrestlers.map(w=>w.weight),ages=wrestlers.map(w=>w.age);
+  const maxW=Math.max(...wts),minW=Math.min(...wts),maxA=Math.max(...ages),minA=Math.min(...ages);
+  if(maxW-minW>10) errors.push(`Weight spread ${minW}–${maxW} lbs exceeds 10 lb limit`);
+  if(maxA-minA>1)  errors.push(`Age gap ${minA}–${maxA} years exceeds 1-year limit`);
+  const hasB=wrestlers.some(w=>w.experience==='Beginner');
+  const hasA=wrestlers.some(w=>w.experience==='Advanced');
+  const hasI=wrestlers.some(w=>w.experience==='Intermediate');
+  if(hasB&&hasA) errors.push('Beginners cannot wrestle Advanced wrestlers');
+  if(hasI&&hasA){const yI=wrestlers.find(w=>w.experience==='Intermediate'&&w.age<14);if(yI) errors.push(`${yI.name} (Intermediate, age ${yI.age}) must be 14+ to wrestle Advanced`);}
+  if(hasB&&hasI){
+    const B=wrestlers.filter(w=>w.experience==='Beginner').length;
+    const I=wrestlers.filter(w=>w.experience==='Intermediate').length;
+    if(!(B===2&&I===2&&wrestlers.length===4)) errors.push('Beginners & Intermediates can only mix in a 2+2 group of 4 (last resort)');
   }
-  if (wrestlers.length > 4)
-    errors.push('Groups cannot have more than 4 wrestlers');
+  if(wrestlers.length>4) errors.push('Groups cannot have more than 4 wrestlers');
   return errors;
 }
+function isValid(w){return validateGroup(w).length===0;}
+function isPure(w){return new Set(w.map(x=>x.experience)).size===1;}
+function hasBeginners(w){return w.some(x=>x.experience==='Beginner');}
 
-function isValidGroup(w) { return validateGroup(w).length === 0; }
-
-function generateGroups(wrestlers) {
-  const sorted = [...wrestlers].sort((a, b) => a.weight - b.weight);
-  const remaining = [...sorted];
-  const groups = [];
-  const unassigned = [];
-  while (remaining.length > 0) {
-    const anchor = remaining[0];
-    const candidates = remaining.filter(w => w.weight - anchor.weight <= 10);
-    let group = null;
-    if (candidates.length >= 4) {
-      for (const combo of combinations(candidates, 4)) {
-        if (isValidGroup(combo)) { group = combo; break; }
-      }
-    }
-    if (!group && candidates.length >= 3) {
-      for (const combo of combinations(candidates, 3)) {
-        if (isValidGroup(combo)) { group = combo; break; }
-      }
-    }
-    if (group) {
-      groups.push({ id: uid(), label: '', wrestlers: group });
-      group.forEach(w => remaining.splice(remaining.findIndex(r => r.id === w.id), 1));
-    } else {
-      unassigned.push(anchor);
-      remaining.shift();
-    }
+/* GROUPING */
+function generateGroups(wrestlers){
+  const sorted=[...wrestlers].sort((a,b)=>a.weight-b.weight);
+  const remaining=[...sorted];
+  const groups=[],unassigned=[];
+  while(remaining.length>0){
+    const anchor=remaining[0];
+    const cands=remaining.filter(w=>w.weight-anchor.weight<=10);
+    let group=null;
+    const trySize=(sz,filter)=>{
+      if(group||cands.length<sz)return;
+      for(const c of combinations(cands,sz)){if(isValid(c)&&(!filter||filter(c))){group=c;return;}}
+    };
+    trySize(4,isPure);
+    trySize(3,isPure);
+    trySize(4,c=>!isPure(c)&&!hasBeginners(c));
+    trySize(3,c=>!isPure(c)&&!hasBeginners(c));
+    trySize(4,c=>!isPure(c));
+    trySize(2,isPure);
+    trySize(2,null);
+    if(group){
+      groups.push({id:uid(),label:'',wrestlers:group});
+      group.forEach(w=>remaining.splice(remaining.findIndex(r=>r.id===w.id),1));
+    } else {unassigned.push(anchor);remaining.shift();}
   }
-  groups.forEach((g, i) => { g.label = String.fromCharCode(65 + i); });
-  return { groups, unassigned };
+  groups.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+  return{groups,unassigned};
 }
 
-function buildMatches(group) {
-  const w = group.wrestlers;
-  const n = w.length;
-  const rawMatches = [];
-  if (n === 3) {
-    rawMatches.push({ round: 1, w1: w[0], w2: w[1] });
-    rawMatches.push({ round: 2, w1: w[0], w2: w[2] });
-    rawMatches.push({ round: 3, w1: w[1], w2: w[2] });
-  } else if (n === 4) {
-    rawMatches.push({ round: 1, w1: w[0], w2: w[3] });
-    rawMatches.push({ round: 1, w1: w[1], w2: w[2] });
-    rawMatches.push({ round: 2, w1: w[0], w2: w[1] });
-    rawMatches.push({ round: 2, w1: w[2], w2: w[3] });
-    rawMatches.push({ round: 3, w1: w[0], w2: w[2] });
-    rawMatches.push({ round: 3, w1: w[1], w2: w[3] });
-  }
-  return rawMatches.map(m => ({
-    ...m, id: uid(), groupId: group.id, groupLabel: group.label, winner: null, mat: 1,
-  }));
+/* SCHEDULING */
+function buildMatches(group){
+  const w=group.wrestlers,n=w.length,raw=[];
+  if(n===2){raw.push({round:1,w1:w[0],w2:w[1]});}
+  else if(n===3){raw.push({round:1,w1:w[0],w2:w[1]});raw.push({round:2,w1:w[0],w2:w[2]});raw.push({round:3,w1:w[1],w2:w[2]});}
+  else if(n===4){raw.push({round:1,w1:w[0],w2:w[3]});raw.push({round:1,w1:w[1],w2:w[2]});raw.push({round:2,w1:w[0],w2:w[1]});raw.push({round:2,w1:w[2],w2:w[3]});raw.push({round:3,w1:w[0],w2:w[2]});raw.push({round:3,w1:w[1],w2:w[3]});}
+  return raw.map(m=>({...m,id:uid(),groupId:group.id,groupLabel:group.label,winner:null,winType:null,mat:1}));
 }
-
-function generateSchedule(groups, numMats) {
-  const matAssign = {};
-  groups.forEach((g, i) => { matAssign[g.id] = (i % numMats) + 1; });
-  const matches = [];
-  groups.forEach(g => {
-    const gMatches = buildMatches(g).map(m => ({ ...m, mat: matAssign[g.id] }));
-    matches.push(...gMatches);
-  });
+function generateSchedule(groups,numMats){
+  const assign={};
+  groups.forEach((g,i)=>{assign[g.id]=(i%numMats)+1;});
+  const matches=[];
+  groups.forEach(g=>buildMatches(g).forEach(m=>matches.push({...m,mat:assign[g.id]})));
   return matches;
 }
 
-function computeStandings(group, matches) {
-  const rows = group.wrestlers.map(w => ({ wrestler: w, wins: 0, losses: 0, points: 0 }));
-  matches
-    .filter(m => m.groupId === group.id && m.winner)
-    .forEach(m => {
-      const loserId = m.winner === m.w1.id ? m.w2.id : m.w1.id;
-      const win = rows.find(r => r.wrestler.id === m.winner);
-      const los = rows.find(r => r.wrestler.id === loserId);
-      if (win) { win.wins++; win.points += 6; }
-      if (los) { los.losses++; }
-    });
-  rows.sort((a, b) => b.points - a.points || b.wins - a.wins);
+/* STANDINGS */
+function computeStandings(group,matches){
+  const rows=group.wrestlers.map(w=>({wrestler:w,wins:0,losses:0,pins:0,points:0}));
+  matches.filter(m=>m.groupId===group.id&&m.winner).forEach(m=>{
+    const loserId=m.winner===m.w1.id?m.w2.id:m.w1.id;
+    const win=rows.find(r=>r.wrestler.id===m.winner);
+    const los=rows.find(r=>r.wrestler.id===loserId);
+    if(win){win.wins++;win.points+=m.winType==='pin'?6:4;if(m.winType==='pin')win.pins++;}
+    if(los)los.losses++;
+  });
+  rows.sort((a,b)=>b.points-a.points||b.wins-a.wins||b.pins-a.pins);
   return rows;
 }
 
-function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g,''));
-  return lines.slice(1).map((line, i) => {
-    const vals = line.split(',').map(v => v.trim());
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = vals[j] || ''; });
-    return {
-      id: uid(),
-      name:       obj.name || `Wrestler ${i + 1}`,
-      age:        parseFloat(obj.age) || 14,
-      grade:      obj.grade || '',
-      experience: ['Beginner','Intermediate','Advanced'].includes(obj.experience) ? obj.experience : 'Beginner',
-      weight:     parseFloat(obj.weight) || 130,
-    };
-  }).filter(w => w.name && w.weight > 0);
+/* CSV */
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(lines.length<2)return[];
+  const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/\s+/g,''));
+  return lines.slice(1).map((line,i)=>{
+    const vals=line.split(',').map(v=>v.trim());
+    const obj={};
+    headers.forEach((h,j)=>{obj[h]=vals[j]||'';});
+    return{id:uid(),name:obj.name||`Wrestler ${i+1}`,age:parseFloat(obj.age)||14,grade:obj.grade||'',experience:['Beginner','Intermediate','Advanced'].includes(obj.experience)?obj.experience:'Beginner',weight:parseFloat(obj.weight)||130};
+  }).filter(w=>w.name&&w.weight>0);
 }
 
-const save = (k, v) => { try { localStorage.setItem('wt_' + k, JSON.stringify(v)); } catch (_) {} };
-const load = (k, fb) => { try { const s = localStorage.getItem('wt_' + k); return s ? JSON.parse(s) : fb; } catch (_) { return fb; } };
-
-const SAMPLE_CSV = `Name,Age,Grade,Experience,Weight
+const SAMPLE_CSV=`Name,Age,Grade,Experience,Weight
 Alex Johnson,14,9th,Beginner,125
 Maria Santos,15,10th,Intermediate,132
 Chris Lee,14,9th,Intermediate,128
@@ -174,43 +163,22 @@ Skyler Patel,14,9th,Beginner,118
 Blake Thompson,15,10th,Intermediate,140
 Avery Robinson,16,11th,Advanced,165`;
 
-const EXP_BADGE = {
-  Beginner:     'bg-emerald-100 text-emerald-800',
-  Intermediate: 'bg-amber-100 text-amber-800',
-  Advanced:     'bg-rose-100 text-rose-800',
-};
-
-function Badge({ text }) {
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${EXP_BADGE[text] || 'bg-gray-100 text-gray-600'}`}>
-      {text ? text[0] : '?'}
-    </span>
-  );
+function Badge({text}){
+  const cls=text==='Beginner'?'badge-b':text==='Intermediate'?'badge-i':'badge-a';
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{text?text[0]:'?'}</span>;
 }
 
-function Nav({ page, setPage, wrestlers, groups }) {
-  const tabs = [
-    { id: 'upload',    icon: '①', label: 'Upload',    badge: wrestlers.length || null },
-    { id: 'groups',    icon: '②', label: 'Groups',    badge: groups.length || null },
-    { id: 'schedule',  icon: '③', label: 'Schedule',  badge: null },
-    { id: 'results',   icon: '④', label: 'Results',   badge: null },
-    { id: 'standings', icon: '⑤', label: 'Standings', badge: null },
-  ];
-  return (
-    <nav className="bg-blue-950 text-white shadow-xl sticky top-0 z-50">
+/* NAV */
+function Nav({page,setPage,wrestlers,groups}){
+  const tabs=[{id:'upload',icon:'①',label:'Upload',badge:wrestlers.length||null},{id:'groups',icon:'②',label:'Groups',badge:groups.length||null},{id:'schedule',icon:'③',label:'Schedule',badge:null},{id:'results',icon:'④',label:'Results',badge:null},{id:'standings',icon:'⑤',label:'Standings',badge:null}];
+  return(
+    <nav className="cp-nav shadow-xl sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-1 flex-wrap">
-        <div className="font-bold text-yellow-400 text-lg mr-4 whitespace-nowrap">🤼 Tournament Manager</div>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setPage(t.id)}
-            className={`relative px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              page === t.id ? 'bg-yellow-400 text-blue-950 shadow' : 'text-blue-200 hover:bg-blue-800'
-            }`}>
+        <div className="font-bold cp-gold-text text-base mr-4 whitespace-nowrap tracking-widest">🐾 CLUB PAW</div>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setPage(t.id)} className={`relative px-3 py-1.5 rounded-lg text-sm transition-all ${page===t.id?'cp-nav-active':'cp-nav-inactive'}`}>
             {t.icon} {t.label}
-            {t.badge ? (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                {t.badge > 99 ? '99+' : t.badge}
-              </span>
-            ) : null}
+            {t.badge?<span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{t.badge>99?'99+':t.badge}</span>:null}
           </button>
         ))}
       </div>
@@ -218,118 +186,67 @@ function Nav({ page, setPage, wrestlers, groups }) {
   );
 }
 
-function UploadPage({ wrestlers, setWrestlers }) {
-  const [paste, setPaste] = useState('');
-  const [err, setErr]     = useState('');
-  const [editId, setEditId] = useState(null);
-
-  function importCSV(text) {
-    try {
-      const parsed = parseCSV(text);
-      if (!parsed.length) throw new Error('No valid rows found');
-      setWrestlers(parsed);
-      setErr('');
-    } catch (e) { setErr(e.message || 'Could not parse. Check format.'); }
-  }
-
-  function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const r = new FileReader();
-    r.onload = ev => importCSV(ev.target.result);
-    r.readAsText(file);
-    e.target.value = '';
-  }
-
-  function update(id, field, val) {
-    setWrestlers(wrestlers.map(w =>
-      w.id !== id ? w : { ...w, [field]: (field === 'age' || field === 'weight') ? (parseFloat(val) || 0) : val }
-    ));
-  }
-
-  function addRow() {
-    const nw = { id: uid(), name: 'New Wrestler', age: 14, grade: '9th', experience: 'Beginner', weight: 130 };
-    setWrestlers([...wrestlers, nw]);
-    setEditId(nw.id);
-  }
-
-  function downloadSample() {
-    const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'sample_wrestlers.csv';
-    a.click();
-  }
-
-  return (
+/* PAGE 1 — UPLOAD */
+function UploadPage({wrestlers,setWrestlers}){
+  const [paste,setPaste]=useState('');
+  const [err,setErr]=useState('');
+  const [editId,setEditId]=useState(null);
+  function imp(text){try{const p=parseCSV(text);if(!p.length)throw new Error('No valid rows found');setWrestlers(p);setErr('');}catch(e){setErr(e.message||'Could not parse.');}}
+  function handleFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>imp(ev.target.result);r.readAsText(f);e.target.value='';}
+  function upd(id,field,val){setWrestlers(wrestlers.map(w=>w.id!==id?w:{...w,[field]:(field==='age'||field==='weight')?(parseFloat(val)||0):val}));}
+  function addRow(){const nw={id:uid(),name:'New Wrestler',age:14,grade:'9th',experience:'Beginner',weight:130};setWrestlers([...wrestlers,nw]);setEditId(nw.id);}
+  function dlSample(){const b=new Blob([SAMPLE_CSV],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sample_wrestlers.csv';a.click();}
+  return(
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-950 mb-6">① Upload Wrestlers</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>① Upload Wrestlers</h1>
       <div className="grid md:grid-cols-2 gap-5 mb-8">
-        <div className="bg-white rounded-2xl shadow p-5 border-2 border-dashed border-blue-200">
-          <h2 className="font-bold text-blue-800 mb-3">📁 Upload CSV File</h2>
-          <input type="file" accept=".csv,.txt" onChange={handleFile}
-            className="block w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:bg-blue-700 file:text-white file:border-0 file:font-medium cursor-pointer" />
-          <p className="text-xs text-gray-400 mt-2">Required columns: Name, Age, Grade, Experience, Weight</p>
-          <button onClick={downloadSample} className="mt-2 text-xs text-blue-600 underline">↓ Download sample CSV</button>
+        <div className="bg-white rounded-2xl shadow p-5 border-2 cp-gold-border border-dashed">
+          <h2 className="font-bold mb-3" style={{color:'#111'}}>📁 Upload CSV File</h2>
+          <input type="file" accept=".csv,.txt" onChange={handleFile} className="block w-full text-sm cursor-pointer"/>
+          <p className="text-xs text-gray-400 mt-2">Columns: Name, Age, Grade, Experience, Weight</p>
+          <button onClick={dlSample} className="mt-1 text-xs underline cp-gold-text">↓ Download sample CSV</button>
         </div>
         <div className="bg-white rounded-2xl shadow p-5">
-          <h2 className="font-bold text-blue-800 mb-3">📋 Paste CSV Data</h2>
-          <textarea className="w-full h-28 border rounded-lg p-2 text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder={"Name,Age,Grade,Experience,Weight\nAlex,14,9th,Beginner,125\n..."}
-            value={paste} onChange={e => setPaste(e.target.value)} />
-          <button onClick={() => importCSV(paste)}
-            className="mt-2 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 text-sm font-medium">Import</button>
-          <button onClick={() => importCSV(SAMPLE_CSV)}
-            className="mt-2 ml-2 text-blue-600 border border-blue-300 px-4 py-2 rounded-lg hover:bg-blue-50 text-sm">Load Sample</button>
+          <h2 className="font-bold mb-3" style={{color:'#111'}}>📋 Paste CSV Data</h2>
+          <textarea className="w-full h-28 border rounded-lg p-2 text-xs font-mono resize-none focus:outline-none" placeholder={"Name,Age,Grade,Experience,Weight\nAlex,14,9th,Beginner,125\n..."} value={paste} onChange={e=>setPaste(e.target.value)}/>
+          <button onClick={()=>imp(paste)} className="mt-2 cp-btn text-sm">Import</button>
+          <button onClick={()=>imp(SAMPLE_CSV)} className="mt-2 ml-2 text-sm border rounded-xl px-4 py-2 hover:bg-gray-50 cp-gold-text cp-gold-border" style={{borderWidth:1}}>Load Sample</button>
         </div>
       </div>
-      {err && <div className="bg-red-50 border border-red-300 text-red-700 rounded-xl p-3 mb-4 text-sm">⚠️ {err}</div>}
+      {err&&<div className="bg-red-50 border border-red-300 text-red-700 rounded-xl p-3 mb-4 text-sm">⚠️ {err}</div>}
       <div className="bg-white rounded-2xl shadow overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
-          <h2 className="font-bold text-blue-900">Wrestler Roster <span className="text-gray-400 font-normal text-sm">({wrestlers.length})</span></h2>
+          <h2 className="font-bold" style={{color:'#111'}}>Wrestler Roster <span className="text-gray-400 font-normal text-sm">({wrestlers.length})</span></h2>
           <button onClick={addRow} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">+ Add Row</button>
         </div>
-        {wrestlers.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            <div className="text-4xl mb-3">🤼</div>
-            Upload a CSV, paste data, or load sample data to get started.
-          </div>
-        ) : (
+        {wrestlers.length===0?(
+          <div className="p-12 text-center text-gray-400"><div className="text-4xl mb-3">🐾</div>Upload a CSV, paste data, or load sample data to get started.</div>
+        ):(
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                  {['Name','Age','Grade','Experience','Weight (lbs)',''].map(h => (
-                    <th key={h} className="text-left px-4 py-2 font-semibold">{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <thead><tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">{['Name','Age','Grade','Experience','Weight (lbs)',''].map(h=><th key={h} className="text-left px-4 py-2 font-semibold">{h}</th>)}</tr></thead>
               <tbody>
-                {wrestlers.map(w => (
+                {wrestlers.map(w=>(
                   <tr key={w.id} className="border-t hover:bg-gray-50 transition-colors">
-                    {editId === w.id ? (
+                    {editId===w.id?(
                       <>
-                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-40 text-sm" value={w.name} onChange={e => update(w.id,'name',e.target.value)} /></td>
-                        <td className="px-2 py-1"><input type="number" className="border rounded px-2 py-1 w-16 text-sm" value={w.age} onChange={e => update(w.id,'age',e.target.value)} /></td>
-                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-16 text-sm" value={w.grade} onChange={e => update(w.id,'grade',e.target.value)} /></td>
-                        <td className="px-2 py-1">
-                          <select className="border rounded px-2 py-1 text-sm" value={w.experience} onChange={e => update(w.id,'experience',e.target.value)}>
-                            <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
-                          </select>
-                        </td>
-                        <td className="px-2 py-1"><input type="number" step="0.5" className="border rounded px-2 py-1 w-20 text-sm" value={w.weight} onChange={e => update(w.id,'weight',e.target.value)} /></td>
-                        <td className="px-2 py-1"><button onClick={() => setEditId(null)} className="text-green-600 font-semibold text-xs hover:underline">✓ Done</button></td>
+                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-40 text-sm" value={w.name} onChange={e=>upd(w.id,'name',e.target.value)}/></td>
+                        <td className="px-2 py-1"><input type="number" className="border rounded px-2 py-1 w-16 text-sm" value={w.age} onChange={e=>upd(w.id,'age',e.target.value)}/></td>
+                        <td className="px-2 py-1"><input className="border rounded px-2 py-1 w-16 text-sm" value={w.grade} onChange={e=>upd(w.id,'grade',e.target.value)}/></td>
+                        <td className="px-2 py-1"><select className="border rounded px-2 py-1 text-sm" value={w.experience} onChange={e=>upd(w.id,'experience',e.target.value)}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></td>
+                        <td className="px-2 py-1"><input type="number" step="0.5" className="border rounded px-2 py-1 w-20 text-sm" value={w.weight} onChange={e=>upd(w.id,'weight',e.target.value)}/></td>
+                        <td className="px-2 py-1"><button onClick={()=>setEditId(null)} className="text-green-600 font-semibold text-xs hover:underline">✓ Done</button></td>
                       </>
-                    ) : (
+                    ):(
                       <>
-                        <td className="px-4 py-2.5 font-medium text-gray-900">{w.name}</td>
+                        <td className="px-4 py-2.5 font-medium">{w.name}</td>
                         <td className="px-4 py-2.5 text-gray-600">{w.age}</td>
                         <td className="px-4 py-2.5 text-gray-600">{w.grade}</td>
-                        <td className="px-4 py-2.5"><Badge text={w.experience} /></td>
+                        <td className="px-4 py-2.5"><Badge text={w.experience}/></td>
                         <td className="px-4 py-2.5 font-mono text-gray-700">{w.weight}</td>
                         <td className="px-4 py-2.5 flex gap-3">
-                          <button onClick={() => setEditId(w.id)} className="text-blue-600 text-xs hover:underline">Edit</button>
-                          <button onClick={() => setWrestlers(wrestlers.filter(x => x.id !== w.id))} className="text-red-400 text-xs hover:underline">Remove</button>
+                          <button onClick={()=>setEditId(w.id)} className="text-xs hover:underline cp-gold-text">Edit</button>
+                          <button onClick={()=>setWrestlers(wrestlers.filter(x=>x.id!==w.id))} className="text-red-400 text-xs hover:underline">Remove</button>
                         </td>
                       </>
                     )}
@@ -344,156 +261,110 @@ function UploadPage({ wrestlers, setWrestlers }) {
   );
 }
 
-function GroupsPage({ wrestlers, groups, setGroups, unassigned, setUnassigned, setMatches }) {
-  const [moving, setMoving] = useState(null);
-  const [warnings, setWarnings] = useState({});
-
-  function handleGenerate() {
-    const { groups: g, unassigned: u } = generateGroups(wrestlers);
-    setGroups(g); setUnassigned(u); setMatches([]); setWarnings({}); setMoving(null);
+/* PAGE 2 — GROUPS */
+function GroupsPage({wrestlers,groups,setGroups,unassigned,setUnassigned,setMatches}){
+  const [moving,setMoving]=useState(null);
+  const [warnings,setWarnings]=useState({});
+  function recheck(grps){const w={};grps.forEach(g=>{const e=validateGroup(g.wrestlers);if(e.length)w[g.id]=e;});setWarnings(w);}
+  function handleGenerate(){const{groups:g,unassigned:u}=generateGroups(wrestlers);setGroups(g);setUnassigned(u);setMatches([]);setWarnings({});setMoving(null);}
+  function finishMove(toId){
+    if(!moving)return;
+    const{fromGroupId,wrestlerId}=moving;
+    let wrestler=null;
+    let nG=groups.map(g=>{if(g.id===fromGroupId){wrestler=g.wrestlers.find(w=>w.id===wrestlerId);return{...g,wrestlers:g.wrestlers.filter(w=>w.id!==wrestlerId)};}return g;});
+    let nU=unassigned;
+    if(!wrestler){wrestler=unassigned.find(w=>w.id===wrestlerId);nU=unassigned.filter(w=>w.id!==wrestlerId);}
+    if(!wrestler){setMoving(null);return;}
+    if(toId==='__new__') nG=[...nG,{id:uid(),label:'',wrestlers:[wrestler]}];
+    else nG=nG.map(g=>g.id===toId?{...g,wrestlers:[...g.wrestlers,wrestler]}:g);
+    const cl=nG.filter(g=>g.wrestlers.length>0);cl.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+    setGroups(cl);setUnassigned(nU);setMatches([]);recheck(cl);setMoving(null);
   }
-
-  function recheckWarnings(grps) {
-    const w = {};
-    grps.forEach(g => { const errs = validateGroup(g.wrestlers); if (errs.length) w[g.id] = errs; });
-    setWarnings(w);
+  function eject(groupId,wrestlerId){
+    let wrestler=null;
+    const nG=groups.map(g=>{if(g.id===groupId){wrestler=g.wrestlers.find(w=>w.id===wrestlerId);return{...g,wrestlers:g.wrestlers.filter(w=>w.id!==wrestlerId)};}return g;});
+    if(!wrestler)return;
+    const cl=nG.filter(g=>g.wrestlers.length>0);cl.forEach((g,i)=>{g.label=String.fromCharCode(65+i);});
+    setGroups(cl);setUnassigned([...unassigned,wrestler]);setMatches([]);recheck(cl);
   }
-
-  function finishMove(toGroupId) {
-    if (!moving) return;
-    const { fromGroupId, wrestlerId } = moving;
-    let wrestler = null;
-    let newGroups = groups.map(g => {
-      if (g.id === fromGroupId) {
-        wrestler = g.wrestlers.find(w => w.id === wrestlerId);
-        return { ...g, wrestlers: g.wrestlers.filter(w => w.id !== wrestlerId) };
-      }
-      return g;
-    });
-    let newUnassigned = unassigned;
-    if (!wrestler) {
-      wrestler = unassigned.find(w => w.id === wrestlerId);
-      newUnassigned = unassigned.filter(w => w.id !== wrestlerId);
-    }
-    if (!wrestler) { setMoving(null); return; }
-    if (toGroupId === '__new__') {
-      const newG = { id: uid(), label: '', wrestlers: [wrestler] };
-      newGroups = [...newGroups, newG];
-    } else {
-      newGroups = newGroups.map(g => g.id === toGroupId ? { ...g, wrestlers: [...g.wrestlers, wrestler] } : g);
-    }
-    const cleaned = newGroups.filter(g => g.wrestlers.length > 0);
-    cleaned.forEach((g, i) => { g.label = String.fromCharCode(65 + i); });
-    setGroups(cleaned); setUnassigned(newUnassigned); setMatches([]);
-    recheckWarnings(cleaned); setMoving(null);
-  }
-
-  function sendToUnassigned(groupId, wrestlerId) {
-    let wrestler = null;
-    const newGroups = groups.map(g => {
-      if (g.id === groupId) { wrestler = g.wrestlers.find(w => w.id === wrestlerId); return { ...g, wrestlers: g.wrestlers.filter(w => w.id !== wrestlerId) }; }
-      return g;
-    });
-    if (!wrestler) return;
-    const cleaned = newGroups.filter(g => g.wrestlers.length > 0);
-    cleaned.forEach((g, i) => { g.label = String.fromCharCode(65 + i); });
-    setGroups(cleaned); setUnassigned([...unassigned, wrestler]); setMatches([]);
-    recheckWarnings(cleaned);
-  }
-
-  return (
+  return(
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-blue-950">② Bracket Groups</h1>
-          {Object.keys(warnings).length > 0 && <p className="text-sm text-red-600 mt-1">⚠️ {Object.keys(warnings).length} group(s) have rule violations</p>}
+          <h1 className="text-2xl font-bold" style={{color:'#111'}}>② Bracket Groups</h1>
+          {Object.keys(warnings).length>0&&<p className="text-sm text-red-600 mt-1">⚠️ {Object.keys(warnings).length} group(s) have violations</p>}
         </div>
-        <button onClick={handleGenerate} disabled={wrestlers.length < 3}
-          className="bg-blue-800 text-white px-5 py-2.5 rounded-xl hover:bg-blue-900 disabled:opacity-40 font-semibold shadow">
-          ⚙️ Auto-Generate Groups ({wrestlers.length} wrestlers)
-        </button>
+        <button onClick={handleGenerate} disabled={wrestlers.length<2} className="cp-btn shadow text-sm">⚙️ Auto-Generate Groups ({wrestlers.length} wrestlers)</button>
       </div>
-      {groups.length === 0 && unassigned.length === 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-10 text-center text-blue-700">
+      {groups.length===0&&unassigned.length===0&&(
+        <div className="cp-info rounded-2xl p-10 text-center">
           <div className="text-4xl mb-3">⚙️</div>
           Click <strong>Auto-Generate Groups</strong> to create brackets automatically.
+          <p className="text-xs mt-2 opacity-70">Priority: pure 4 → pure 3 → I+A mix → 2B+2I mix → pure 2 (last resort)</p>
         </div>
       )}
-      {moving && (
+      {moving&&(
         <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mb-4 text-sm text-yellow-800 flex items-center justify-between">
-          <span>📌 Click a group to move this wrestler into it</span>
-          <button onClick={() => setMoving(null)} className="font-semibold underline ml-4">✕ Cancel</button>
+          <span>📌 Click a group to move the selected wrestler into it</span>
+          <button onClick={()=>setMoving(null)} className="font-semibold underline ml-4">✕ Cancel</button>
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groups.map(group => {
-          const errs = warnings[group.id] || [];
-          const isTarget = moving && moving.fromGroupId !== group.id;
-          return (
-            <div key={group.id} onClick={() => isTarget && finishMove(group.id)}
-              className={`bg-white rounded-2xl shadow p-4 border-2 transition-all ${
-                errs.length ? 'border-red-400' : isTarget ? 'border-blue-400 ring-2 ring-blue-200 cursor-pointer hover:border-blue-600' : 'border-transparent'
-              }`}>
+        {groups.map(group=>{
+          const errs=warnings[group.id]||[];
+          const isTarget=moving&&moving.fromGroupId!==group.id;
+          const sz=group.wrestlers;
+          const is2=sz.length===2;
+          return(
+            <div key={group.id} onClick={()=>isTarget&&finishMove(group.id)}
+              className={`bg-white rounded-2xl shadow p-4 border-2 transition-all ${errs.length?'border-red-400':isTarget?'border-yellow-400 ring-2 ring-yellow-100 cursor-pointer':is2?'border-orange-300':'border-transparent'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-900 text-white font-bold text-lg w-9 h-9 rounded-full flex items-center justify-center">{group.label}</span>
-                  <span className="text-gray-500 text-sm">{group.wrestlers.length} wrestlers</span>
+                  <span className="cp-dark font-bold text-lg w-9 h-9 rounded-full flex items-center justify-center">{group.label}</span>
+                  <span className="text-gray-500 text-sm">{sz.length} wrestlers</span>
+                  {is2&&<span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">2-person</span>}
                 </div>
-                {group.wrestlers.length > 0 && (
-                  <span className="text-xs text-gray-400 font-mono">
-                    {Math.min(...group.wrestlers.map(w=>w.weight))}–{Math.max(...group.wrestlers.map(w=>w.weight))} lbs
-                  </span>
-                )}
+                {sz.length>0&&<span className="text-xs text-gray-400 font-mono">{Math.min(...sz.map(w=>w.weight))}–{Math.max(...sz.map(w=>w.weight))} lbs</span>}
               </div>
-              {errs.length > 0 && (
-                <div className="bg-red-50 rounded-lg p-2 mb-3 text-xs text-red-700 space-y-0.5">
-                  {errs.map((e, i) => <div key={i}>⚠️ {e}</div>)}
-                </div>
-              )}
+              {errs.length>0&&<div className="bg-red-50 rounded-lg p-2 mb-3 text-xs text-red-700 space-y-0.5">{errs.map((e,i)=><div key={i}>⚠️ {e}</div>)}</div>}
               <div className="space-y-1">
-                {group.wrestlers.map(w => (
-                  <div key={w.id} className={`flex items-center justify-between py-1.5 px-2 rounded-lg text-sm ${moving?.wrestlerId === w.id ? 'bg-blue-100 ring-1 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <Badge text={w.experience} />
-                      <span className="font-medium truncate">{w.name}</span>
-                    </div>
+                {group.wrestlers.map(w=>(
+                  <div key={w.id} className={`flex items-center justify-between py-1.5 px-2 rounded-lg text-sm ${moving?.wrestlerId===w.id?'bg-yellow-100':'hover:bg-gray-50'}`}>
+                    <div className="flex items-center gap-2 overflow-hidden"><Badge text={w.experience}/><span className="font-medium truncate">{w.name}</span></div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       <span className="text-gray-400 text-xs font-mono">{w.weight}</span>
                       <span className="text-gray-300 text-xs">· {w.age}y</span>
-                      <button onClick={e => { e.stopPropagation(); setMoving({ fromGroupId: group.id, wrestlerId: w.id }); }} className="ml-1 text-blue-500 text-xs hover:underline">↕</button>
-                      <button onClick={e => { e.stopPropagation(); sendToUnassigned(group.id, w.id); }} className="text-gray-300 text-xs hover:text-red-400">✕</button>
+                      <button onClick={e=>{e.stopPropagation();setMoving({fromGroupId:group.id,wrestlerId:w.id});}} className="ml-1 text-xs hover:underline cp-gold-text">↕</button>
+                      <button onClick={e=>{e.stopPropagation();eject(group.id,w.id);}} className="text-gray-300 text-xs hover:text-red-400">✕</button>
                     </div>
                   </div>
                 ))}
               </div>
-              {group.wrestlers.length > 0 && (
+              {sz.length>0&&(
                 <div className="mt-3 pt-2 border-t flex gap-2 text-xs text-gray-400">
-                  <span>🎂 Age {Math.min(...group.wrestlers.map(w=>w.age))}–{Math.max(...group.wrestlers.map(w=>w.age))}</span>
-                  <span>·</span>
-                  <span className={errs.length ? 'text-red-400' : 'text-green-600'}>{errs.length ? '✗ Invalid' : '✓ Valid'}</span>
+                  <span>🎂 Age {Math.min(...sz.map(w=>w.age))}–{Math.max(...sz.map(w=>w.age))}</span><span>·</span>
+                  <span className={errs.length?'text-red-400':'text-green-600'}>{errs.length?'✗ Invalid':'✓ Valid'}</span>
                 </div>
               )}
             </div>
           );
         })}
-        {moving && (
-          <div onClick={() => finishMove('__new__')}
-            className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all min-h-36">
+        {moving&&(
+          <div onClick={()=>finishMove('__new__')} className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-yellow-400 hover:bg-yellow-50 transition-all min-h-36">
             <span className="text-gray-400 text-sm font-medium">+ New Group</span>
           </div>
         )}
       </div>
-      {unassigned.length > 0 && (
+      {unassigned.length>0&&(
         <div className="mt-6 bg-orange-50 rounded-2xl border border-orange-200 p-5">
           <h2 className="font-bold text-orange-800 mb-1">⚠️ Unassigned Wrestlers ({unassigned.length})</h2>
-          <p className="text-xs text-orange-600 mb-3">Couldn't be auto-placed in a valid group. Use ↕ to move them manually.</p>
+          <p className="text-xs text-orange-600 mb-3">Couldn't be placed automatically. Use ↕ to move them manually.</p>
           <div className="flex flex-wrap gap-2">
-            {unassigned.map(w => (
-              <div key={w.id} className={`bg-white border rounded-xl px-3 py-2 text-sm flex items-center gap-2 shadow-sm ${moving?.wrestlerId === w.id ? 'border-blue-400 bg-blue-50' : 'border-orange-200'}`}>
-                <Badge text={w.experience} />
-                <span className="font-medium">{w.name}</span>
+            {unassigned.map(w=>(
+              <div key={w.id} className={`bg-white border rounded-xl px-3 py-2 text-sm flex items-center gap-2 shadow-sm ${moving?.wrestlerId===w.id?'border-yellow-400 bg-yellow-50':'border-orange-200'}`}>
+                <Badge text={w.experience}/><span className="font-medium">{w.name}</span>
                 <span className="text-gray-400 text-xs font-mono">{w.weight}lbs · {w.age}y</span>
-                <button onClick={() => setMoving({ fromGroupId: '__unassigned__', wrestlerId: w.id })} className="text-blue-500 text-xs hover:underline">↕ Move</button>
+                <button onClick={()=>setMoving({fromGroupId:'__unassigned__',wrestlerId:w.id})} className="text-xs hover:underline cp-gold-text">↕ Move</button>
               </div>
             ))}
           </div>
@@ -503,56 +374,52 @@ function GroupsPage({ wrestlers, groups, setGroups, unassigned, setUnassigned, s
   );
 }
 
-function SchedulePage({ groups, numMats, setNumMats, matches, setMatches }) {
-  const rounds = [...new Set(matches.map(m => m.round))].sort((a,b)=>a-b);
-  const mats   = [...new Set(matches.map(m => m.mat))].sort((a,b)=>a-b);
-  const done   = matches.filter(m => m.winner).length;
-
-  return (
+/* PAGE 3 — SCHEDULE */
+function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
+  const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
+  const mats=[...new Set(matches.map(m=>m.mat))].sort((a,b)=>a-b);
+  const done=matches.filter(m=>m.winner).length;
+  const winLabel=m=>{if(!m.winner)return null;const n=m.winner===m.w1.id?m.w1.name:m.w2.name;return `${n} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;};
+  return(
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4 mb-6 flex-wrap">
-        <h1 className="text-2xl font-bold text-blue-950">③ Match Schedule</h1>
+        <h1 className="text-2xl font-bold" style={{color:'#111'}}>③ Match Schedule</h1>
         <div className="flex items-center gap-2 bg-white rounded-xl shadow px-3 py-2">
           <label className="text-sm font-medium text-gray-600">Mats:</label>
-          <select value={numMats} onChange={e => setNumMats(parseInt(e.target.value))} className="border-0 text-sm font-bold focus:outline-none bg-transparent">
-            {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+          <select value={numMats} onChange={e=>setNumMats(parseInt(e.target.value))} className="border-0 text-sm font-bold focus:outline-none bg-transparent">
+            {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-        <button onClick={() => setMatches(generateSchedule(groups, numMats))} disabled={groups.length === 0}
-          className="bg-blue-800 text-white px-5 py-2.5 rounded-xl hover:bg-blue-900 disabled:opacity-40 font-semibold shadow">
-          📋 Generate Schedule
-        </button>
-        {matches.length > 0 && <span className="text-sm text-gray-500 ml-auto">{done}/{matches.length} matches completed</span>}
+        <button onClick={()=>setMatches(generateSchedule(groups,numMats))} disabled={groups.length===0} className="cp-btn text-sm shadow">📋 Generate Schedule</button>
+        {matches.length>0&&<span className="text-sm text-gray-500 ml-auto">{done}/{matches.length} completed</span>}
       </div>
-      {matches.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-10 text-center text-blue-700">
-          <div className="text-4xl mb-3">📋</div>
-          {groups.length === 0 ? 'Create groups first (Step ②), then generate the schedule.' : 'Click Generate Schedule to build the match order.'}
-        </div>
-      ) : (
-        rounds.map(round => (
+      {matches.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">📋</div>{groups.length===0?'Create groups first (Step ②).':'Click Generate Schedule.'}</div>
+      ):(
+        rounds.map(round=>(
           <div key={round} className="mb-7">
             <div className="flex items-center gap-3 mb-3">
-              <h2 className="font-bold text-lg text-white bg-blue-900 px-4 py-1.5 rounded-full">Round {round}</h2>
+              <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>Round {round}</h2>
               <span className="text-sm text-gray-400">{matches.filter(m=>m.round===round&&m.winner).length} / {matches.filter(m=>m.round===round).length} done</span>
             </div>
-            <div className={`grid gap-4 ${numMats > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-              {mats.map(mat => {
-                const mm = matches.filter(m => m.round === round && m.mat === mat);
-                if (!mm.length) return null;
-                return (
+            <div className={`grid gap-4 ${numMats>1?'md:grid-cols-2':'grid-cols-1'}`}>
+              {mats.map(mat=>{
+                const mm=matches.filter(m=>m.round===round&&m.mat===mat);
+                if(!mm.length)return null;
+                return(
                   <div key={mat} className="bg-white rounded-2xl shadow p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="bg-gray-800 text-white font-bold px-3 py-1 rounded-lg text-sm">Mat {mat}</span>
-                    </div>
+                    <div className="mb-3"><span className="text-white font-bold px-3 py-1 rounded-lg text-sm" style={{background:'#111'}}>Mat {mat}</span></div>
                     <div className="space-y-2">
-                      {mm.map(m => (
-                        <div key={m.id} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${m.winner ? 'bg-green-50' : 'bg-gray-50'}`}>
-                          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full shrink-0">{m.groupLabel}</span>
-                          <span className={`font-medium flex-1 ${m.winner === m.w1.id ? 'text-green-700' : ''}`}>{m.w1.name}</span>
-                          <span className="text-gray-300 font-bold text-xs">VS</span>
-                          <span className={`font-medium flex-1 text-right ${m.winner === m.w2.id ? 'text-green-700' : ''}`}>{m.w2.name}</span>
-                          {m.winner ? <span className="text-green-500 text-xs shrink-0">✓</span> : <span className="text-gray-300 text-xs shrink-0">—</span>}
+                      {mm.map(m=>(
+                        <div key={m.id} className={`flex flex-col px-3 py-2.5 rounded-xl text-sm ${m.winner?'bg-yellow-50':'bg-gray-50'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
+                            <span className={`font-medium flex-1 ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
+                            <span className="text-gray-300 font-bold text-xs">VS</span>
+                            <span className={`font-medium flex-1 text-right ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
+                            {m.winner?<span className="text-green-500 text-xs shrink-0">✓</span>:<span className="text-gray-300 text-xs">—</span>}
+                          </div>
+                          {m.winner&&<div className="text-xs mt-1 cp-gold-text">🏆 {winLabel(m)}</div>}
                         </div>
                       ))}
                     </div>
@@ -567,81 +434,90 @@ function SchedulePage({ groups, numMats, setNumMats, matches, setMatches }) {
   );
 }
 
-function ResultsPage({ matches, setMatches }) {
-  const [filter, setFilter] = useState('all');
-  const pick = (matchId, winnerId) => setMatches(matches.map(m => m.id === matchId ? { ...m, winner: winnerId } : m));
-  const rounds = [...new Set(matches.map(m => m.round))].sort((a,b)=>a-b);
-  const done = matches.filter(m => m.winner).length;
-  const pct  = matches.length ? Math.round(done / matches.length * 100) : 0;
-  const filtered = (round) => matches.filter(m => {
-    if (m.round !== round) return false;
-    if (filter === 'pending')   return !m.winner;
-    if (filter === 'completed') return !!m.winner;
+/* PAGE 4 — RESULTS */
+function ResultsPage({matches,setMatches}){
+  const [filter,setFilter]=useState('all');
+  const pick=(id,wId,type)=>setMatches(matches.map(m=>m.id===id?{...m,winner:wId,winType:type}:m));
+  const undo=(id)=>setMatches(matches.map(m=>m.id===id?{...m,winner:null,winType:null}:m));
+  const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
+  const done=matches.filter(m=>m.winner).length;
+  const pct=matches.length?Math.round(done/matches.length*100):0;
+  const filtered=(round)=>matches.filter(m=>{
+    if(m.round!==round)return false;
+    if(filter==='pending')return !m.winner;
+    if(filter==='completed')return !!m.winner;
     return true;
   });
-
-  return (
+  return(
     <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-950 mb-6">④ Live Results Entry</h1>
-      {matches.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-10 text-center text-blue-700">
-          <div className="text-4xl mb-3">🎯</div>Generate a schedule first (Step ③).
-        </div>
-      ) : (
+      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>④ Live Results Entry</h1>
+      {matches.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">🎯</div>Generate a schedule first (Step ③).</div>
+      ):(
         <>
           <div className="bg-white rounded-2xl shadow p-4 mb-6">
             <div className="flex items-center justify-between mb-2 text-sm">
-              <span className="font-semibold text-gray-700">Tournament Progress</span>
-              <span className="font-bold text-blue-800">{done} / {matches.length} · {pct}%</span>
+              <span className="font-semibold" style={{color:'#111'}}>Tournament Progress</span>
+              <span className="font-bold cp-gold-text">{done} / {matches.length} · {pct}%</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-3 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all" style={{ width: pct + '%' }} />
+              <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
             </div>
             <div className="flex gap-2 mt-3">
-              {['all','pending','completed'].map(f => (
-                <button key={f} onClick={() => setFilter(f)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium capitalize ${filter === f ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >{f}</button>
+              {['all','pending','completed'].map(f=>(
+                <button key={f} onClick={()=>setFilter(f)} className={`px-3 py-1 rounded-lg text-xs font-medium capitalize`} style={filter===f?{background:'#C9A227',color:'#111'}:{background:'#f3f4f6',color:'#555'}}>{f}</button>
               ))}
             </div>
+            <div className="mt-3 pt-3 border-t flex items-center gap-6 text-xs text-gray-500">
+              <div className="flex items-center gap-1.5"><span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:'#111'}}></span><strong>📌 Pin = 6 pts</strong></div>
+              <div className="flex items-center gap-1.5"><span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:'#4ade80'}}></span><strong>✓ Points = 4 pts</strong></div>
+            </div>
           </div>
-          {rounds.map(round => {
-            const rm = filtered(round);
-            if (!rm.length) return null;
-            return (
+          {rounds.map(round=>{
+            const rm=filtered(round);
+            if(!rm.length)return null;
+            return(
               <div key={round} className="mb-6">
-                <h2 className="font-bold text-blue-900 mb-3 bg-blue-100 px-4 py-2 rounded-xl">
-                  Round {round} <span className="ml-2 text-blue-500 font-normal text-sm">({matches.filter(m=>m.round===round&&m.winner).length}/{matches.filter(m=>m.round===round).length})</span>
+                <h2 className="font-bold mb-3 px-4 py-2 rounded-xl text-white" style={{background:'#111'}}>
+                  Round {round} <span className="ml-2 font-normal text-sm cp-gold-text">({matches.filter(m=>m.round===round&&m.winner).length}/{matches.filter(m=>m.round===round).length})</span>
                 </h2>
-                <div className="space-y-3">
-                  {rm.map(m => (
-                    <div key={m.id} className={`bg-white rounded-2xl shadow border-2 p-4 transition-all ${m.winner ? 'border-green-300' : 'border-transparent'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">Group {m.groupLabel}</span>
-                          <span className="text-xs text-gray-400">Mat {m.mat}</span>
+                <div className="space-y-4">
+                  {rm.map(m=>{
+                    const wName=m.winner?(m.winner===m.w1.id?m.w1.name:m.w2.name):null;
+                    return(
+                      <div key={m.id} className={`bg-white rounded-2xl shadow border-2 p-4 transition-all ${m.winner?'border-yellow-400':'border-transparent'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
+                            <span className="text-xs text-gray-400">Mat {m.mat}</span>
+                          </div>
+                          {m.winner&&<button onClick={()=>undo(m.id)} className="text-xs text-gray-400 hover:text-red-500 underline">Undo</button>}
                         </div>
-                        {m.winner && <button onClick={() => pick(m.id, null)} className="text-xs text-gray-400 hover:text-red-500 underline">Undo</button>}
+                        {m.winner?(
+                          <div className="rounded-xl p-3 text-center" style={{background:'#fef9e7',border:'1.5px solid #C9A227'}}>
+                            <div className="font-bold text-lg">🏆 {wName}</div>
+                            <div className="text-sm mt-1 cp-gold-text">Won by <strong>{m.winType==='pin'?'Pin — 6 points':'Points — 4 points'}</strong></div>
+                          </div>
+                        ):(
+                          <div>
+                            <p className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wider">Select winner &amp; win type:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {[m.w1,m.w2].map(wrestler=>(
+                                <div key={wrestler.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                                  <div className="font-bold text-sm mb-0.5">{wrestler.name}</div>
+                                  <div className="text-xs text-gray-400 mb-3">{wrestler.weight}lbs · {wrestler.experience} · Age {wrestler.age}</div>
+                                  <div className="flex flex-col gap-2">
+                                    <button onClick={()=>pick(m.id,wrestler.id,'pin')} className="pin-btn text-xs">📌 Win by Pin <span style={{opacity:.7}}>(6 pts)</span></button>
+                                    <button onClick={()=>pick(m.id,wrestler.id,'points')} className="pts-btn text-xs">✓ Win by Points <span style={{opacity:.7}}>(4 pts)</span></button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        {[m.w1, m.w2].map((wrestler, idx) => (
-                          <React.Fragment key={wrestler.id}>
-                            <button onClick={() => pick(m.id, wrestler.id)}
-                              className={`flex-1 py-4 rounded-xl font-semibold text-sm border-2 transition-all shadow-sm ${
-                                m.winner === wrestler.id ? 'bg-green-500 text-white border-green-500' :
-                                m.winner ? 'bg-gray-50 text-gray-300 border-gray-100' :
-                                'border-blue-200 hover:border-blue-500 hover:bg-blue-50 text-blue-900'
-                              }`}>
-                              <div>{wrestler.name}</div>
-                              <div className="text-xs mt-1 opacity-70 font-normal">{wrestler.weight}lbs · {wrestler.experience} · Age {wrestler.age}</div>
-                              {m.winner === wrestler.id && <div className="text-lg mt-1">🏆</div>}
-                            </button>
-                            {idx === 0 && <span className="text-gray-300 font-black text-sm shrink-0">VS</span>}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -652,62 +528,56 @@ function ResultsPage({ matches, setMatches }) {
   );
 }
 
-function StandingsPage({ groups, matches }) {
-  const PLACE_ICONS = ['🥇','🥈','🥉','4th'];
-  return (
+/* PAGE 5 — STANDINGS */
+function StandingsPage({groups,matches}){
+  const ICONS=['🥇','🥈','🥉','4th'];
+  return(
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-950 mb-6">⑤ Standings &amp; Placements</h1>
-      {groups.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-10 text-center text-blue-700">
-          <div className="text-4xl mb-3">🏆</div>No groups yet. Complete steps ①–③ first.
-        </div>
-      ) : (
+      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>⑤ Standings &amp; Placements</h1>
+      {groups.length===0?(
+        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">🏆</div>No groups yet. Complete steps ①–③ first.</div>
+      ):(
         <div className="space-y-6">
-          {groups.map(group => {
-            const standings = computeStandings(group, matches);
-            const groupMatches = matches.filter(m => m.groupId === group.id);
-            const total = groupMatches.length;
-            const completed = groupMatches.filter(m => m.winner).length;
-            const finished = total > 0 && completed === total;
-            return (
+          {groups.map(group=>{
+            const standings=computeStandings(group,matches);
+            const gm=matches.filter(m=>m.groupId===group.id);
+            const total=gm.length,completed=gm.filter(m=>m.winner).length,finished=total>0&&completed===total;
+            const is2=group.wrestlers.length===2;
+            return(
               <div key={group.id} className="bg-white rounded-2xl shadow overflow-hidden">
-                <div className="bg-blue-950 text-white px-5 py-3 flex items-center justify-between">
-                  <h2 className="font-bold text-lg">Group {group.label}</h2>
+                <div className="cp-dark px-5 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-lg">Group {group.label}</h2>
+                    {is2&&<span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{background:'#C9A227',color:'#111'}}>2-person</span>}
+                  </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="text-blue-300">{completed}/{total} matches</span>
-                    {finished && <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">FINAL</span>}
+                    <span className="cp-gold-text">{completed}/{total} matches</span>
+                    {finished&&<span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">FINAL</span>}
                   </div>
                 </div>
-                {total > 0 && (
-                  <div className="h-1 bg-gray-100">
-                    <div className="h-1 bg-green-500 transition-all" style={{ width: (completed/total*100)+'%' }} />
-                  </div>
-                )}
+                {total>0&&<div className="h-1 bg-gray-100"><div className="h-1 transition-all" style={{width:(completed/total*100)+'%',background:'#C9A227'}}/></div>}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                       <th className="text-left px-4 py-2">Place</th>
                       <th className="text-left px-4 py-2">Wrestler</th>
                       <th className="text-left px-4 py-2 hidden sm:table-cell">Details</th>
-                      <th className="text-center px-4 py-2 text-green-700">W</th>
-                      <th className="text-center px-4 py-2 text-red-500">L</th>
-                      <th className="text-center px-4 py-2 text-blue-800">Pts</th>
+                      <th className="text-center px-3 py-2 text-green-700">W</th>
+                      <th className="text-center px-3 py-2 text-red-500">L</th>
+                      <th className="text-center px-3 py-2" style={{color:'#C9A227'}}>Pins</th>
+                      <th className="text-center px-3 py-2" style={{color:'#111'}}>Pts</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {standings.map((s, i) => (
-                      <tr key={s.wrestler.id} className={`border-t transition-colors ${i === 0 && finished ? 'bg-yellow-50' : ''}`}>
-                        <td className="px-4 py-3 text-lg w-14 text-center">{PLACE_ICONS[i] || `${i+1}.`}</td>
+                    {standings.map((s,i)=>(
+                      <tr key={s.wrestler.id} className={`border-t transition-colors ${i===0&&finished?'bg-yellow-50':''}`}>
+                        <td className="px-4 py-3 text-lg w-14 text-center">{ICONS[i]||`${i+1}.`}</td>
                         <td className="px-4 py-3 font-semibold">{s.wrestler.name}</td>
-                        <td className="px-4 py-3 hidden sm:table-cell">
-                          <div className="flex items-center gap-2">
-                            <Badge text={s.wrestler.experience} />
-                            <span className="text-gray-400 text-xs">{s.wrestler.weight}lbs · Age {s.wrestler.age} · {s.wrestler.grade}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center font-bold text-green-700 text-base">{s.wins}</td>
-                        <td className="px-4 py-3 text-center text-red-400">{s.losses}</td>
-                        <td className="px-4 py-3 text-center font-bold text-blue-800 text-base">{s.points}</td>
+                        <td className="px-4 py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Badge text={s.wrestler.experience}/><span className="text-gray-400 text-xs">{s.wrestler.weight}lbs · Age {s.wrestler.age} · {s.wrestler.grade}</span></div></td>
+                        <td className="px-3 py-3 text-center font-bold text-green-700">{s.wins}</td>
+                        <td className="px-3 py-3 text-center text-red-400">{s.losses}</td>
+                        <td className="px-3 py-3 text-center font-bold cp-gold-text">{s.pins}</td>
+                        <td className="px-3 py-3 text-center font-bold text-xl" style={{color:'#111'}}>{s.points}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -721,37 +591,33 @@ function StandingsPage({ groups, matches }) {
   );
 }
 
-function App() {
-  const [page,       setPage]       = useState('upload');
-  const [wrestlers,  setWrestlers]  = useState(() => load('wrestlers', []));
-  const [groups,     setGroups]     = useState(() => load('groups', []));
-  const [unassigned, setUnassigned] = useState(() => load('unassigned', []));
-  const [matches,    setMatches]    = useState(() => load('matches', []));
-  const [numMats,    setNumMats]    = useState(() => load('numMats', 2));
-
-  useEffect(() => { save('wrestlers',  wrestlers);  }, [wrestlers]);
-  useEffect(() => { save('groups',     groups);     }, [groups]);
-  useEffect(() => { save('unassigned', unassigned); }, [unassigned]);
-  useEffect(() => { save('matches',    matches);    }, [matches]);
-  useEffect(() => { save('numMats',    numMats);    }, [numMats]);
-
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Nav page={page} setPage={setPage} wrestlers={wrestlers} groups={groups} />
+/* ROOT */
+function App(){
+  const [page,setPage]=useState('upload');
+  const [wrestlers,setWrestlers]=useState(()=>load('wrestlers',[]));
+  const [groups,setGroups]=useState(()=>load('groups',[]));
+  const [unassigned,setUnassigned]=useState(()=>load('unassigned',[]));
+  const [matches,setMatches]=useState(()=>load('matches',[]));
+  const [numMats,setNumMats]=useState(()=>load('numMats',2));
+  useEffect(()=>{ save('wrestlers',wrestlers); },[wrestlers]);
+  useEffect(()=>{ save('groups',groups); },[groups]);
+  useEffect(()=>{ save('unassigned',unassigned); },[unassigned]);
+  useEffect(()=>{ save('matches',matches); },[matches]);
+  useEffect(()=>{ save('numMats',numMats); },[numMats]);
+  return(
+    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
+      <Nav page={page} setPage={setPage} wrestlers={wrestlers} groups={groups}/>
       <div className="pb-12">
-        {page === 'upload'    && <UploadPage    wrestlers={wrestlers}  setWrestlers={setWrestlers} />}
-        {page === 'groups'    && <GroupsPage    wrestlers={wrestlers}  groups={groups}     setGroups={setGroups}
-                                               unassigned={unassigned} setUnassigned={setUnassigned} setMatches={setMatches} />}
-        {page === 'schedule'  && <SchedulePage  groups={groups}        numMats={numMats}   setNumMats={setNumMats}
-                                               matches={matches}       setMatches={setMatches} />}
-        {page === 'results'   && <ResultsPage   matches={matches}      setMatches={setMatches} />}
-        {page === 'standings' && <StandingsPage groups={groups}        matches={matches} />}
+        {page==='upload'    && <UploadPage    wrestlers={wrestlers}  setWrestlers={setWrestlers}/>}
+        {page==='groups'    && <GroupsPage    wrestlers={wrestlers}  groups={groups} setGroups={setGroups} unassigned={unassigned} setUnassigned={setUnassigned} setMatches={setMatches}/>}
+        {page==='schedule'  && <SchedulePage  groups={groups} numMats={numMats} setNumMats={setNumMats} matches={matches} setMatches={setMatches}/>}
+        {page==='results'   && <ResultsPage   matches={matches} setMatches={setMatches}/>}
+        {page==='standings' && <StandingsPage groups={groups} matches={matches}/>}
       </div>
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
