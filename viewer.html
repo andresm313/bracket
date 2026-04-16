@@ -23,6 +23,16 @@
     .badge-a{background:#fee2e2;color:#991b1b;}
     .pulse{animation:pulse 1.5s infinite;}
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);}
+    .modal-card{background:#fff;border-radius:1.5rem;max-width:560px;width:100%;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.35);}
+    .modal-header{background:#111;padding:1.5rem 1.75rem;}
+    .modal-body{padding:1.75rem;}
+    .modal-footer{padding:0 1.75rem 1.75rem;}
+    .accept-btn{background:#C9A227;color:#111;font-weight:800;border:0;border-radius:.85rem;padding:.85rem 1.5rem;width:100%;font-size:1rem;cursor:pointer;transition:background .15s;letter-spacing:.02em;}
+    .accept-btn:hover{background:#A8841E;}
+    .rule-item{display:flex;gap:.75rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f3f4f6;}
+    .rule-item:last-child{border-bottom:none;}
+    .rule-icon{font-size:1.1rem;flex-shrink:0;margin-top:.05rem;}
     .mat-col{background:#fff;border-radius:1.25rem;overflow:hidden;flex:1;min-width:260px;box-shadow:0 2px 12px rgba(0,0,0,.08);}
     .mat-header{background:#C9A227;color:#111;padding:.75rem 1rem;font-weight:900;font-size:1.25rem;text-align:center;letter-spacing:.05em;}
     .now-card{background:#fffbeb;border:2px solid #C9A227;border-radius:1rem;padding:.9rem;}
@@ -500,8 +510,70 @@ function ScheduleView({ matches }) {
   );
 }
 
+/* DISCLAIMER MODAL */
+function DisclaimerModal({ onAccept }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card">
+
+        {/* Header */}
+        <div className="modal-header">
+          <div className="flex items-center gap-3 mb-1">
+            <span style={{fontSize:'1.6rem'}}>🐾</span>
+            <div>
+              <div className="font-black text-white tracking-widest text-lg" style={{letterSpacing:'.1em'}}>CLUB PAW</div>
+              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER WRESTLING CLUB</div>
+            </div>
+          </div>
+          <div className="mt-3 font-bold text-white text-xl">Tournament Viewer</div>
+          <div className="text-sm mt-0.5" style={{color:'#9ca3af'}}>Please review and accept before entering</div>
+        </div>
+
+        {/* Body */}
+        <div className="modal-body">
+          <div className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider">Spectator Guidelines &amp; Disclaimer</div>
+
+          <div>
+            {[
+              { icon:'🤼', text:'This tournament is recreational in nature and is designed to provide a positive, fun, and safe competitive experience for all participants.' },
+              { icon:'👏', text:'We ask all spectators to model positive sportsmanship — encourage all athletes on the mat, regardless of affiliation. Negative comments directed at competitors, coaches, or officials will not be tolerated.' },
+              { icon:'🙏', text:'This event is organized and run entirely by volunteers. We appreciate your patience and understanding as we work to give every wrestler a great experience.' },
+              { icon:'⏱️', text:'Match format consists of three 45-second periods. Format may be adjusted at the discretion of tournament staff as the event progresses.' },
+              { icon:'📋', text:'All bracket placements, scheduling, and officiating decisions are final and made by tournament staff.' },
+            ].map((item, i) => (
+              <div key={i} className="rule-item">
+                <span className="rule-icon">{item.icon}</span>
+                <span className="text-sm text-gray-600 leading-relaxed">{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-xl p-3 text-xs text-gray-500 leading-relaxed" style={{background:'#fefce8',border:'1px solid #C9A227'}}>
+            By tapping <strong>"I Understand — Enter Viewer"</strong> below, you acknowledge these guidelines and agree to conduct yourself in a manner consistent with the values of Club Paw.
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="modal-footer">
+          <button className="accept-btn" onClick={onAccept}>
+            I Understand — Enter Viewer →
+          </button>
+          <p className="text-center text-xs text-gray-400 mt-3">
+            Thank you for supporting Rochester Club Paw Wrestling 🐾
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 /* ROOT */
 function App() {
+  const [accepted, setAccepted] = useState(() => {
+    try { return localStorage.getItem('cp_disclaimer_accepted') === 'true'; }
+    catch(_) { return false; }
+  });
   const [page, setPage]               = useState('now');
   const [groups, setGroups]           = useState([]);
   const [matches, setMatches]         = useState([]);
@@ -522,6 +594,10 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{background:'#f3f4f6'}}>
+      {!accepted && <DisclaimerModal onAccept={() => {
+        try { localStorage.setItem('cp_disclaimer_accepted', 'true'); } catch(_) {}
+        setAccepted(true);
+      }} />}
       <Nav page={page} setPage={setPage} lastUpdated={lastUpdated} />
       <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
         👁 VIEW ONLY — Updates in real-time
