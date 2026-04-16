@@ -244,7 +244,8 @@ function Badge({text}){
 
 /* NAV */
 function Nav({page,setPage,wrestlers,groups}){
-  const tabs=[{id:'upload',icon:'①',label:'Upload',badge:wrestlers.length||null},{id:'groups',icon:'②',label:'Groups',badge:groups.length||null},{id:'schedule',icon:'③',label:'Schedule',badge:null},{id:'results',icon:'④',label:'Results',badge:null},{id:'standings',icon:'⑤',label:'Standings',badge:null}];
+  const tabs=[{id:'upload',icon:'①',label:'Upload',badge:wrestlers.length||null},{id:'groups',icon:'②',label:'Groups',badge:groups.length||null},{id:'schedule',icon:'③',label:'Schedule',badge:null},{id:'results',icon:'④',label:'Results',badge:null},{id:'standings',icon:'⑤',label:'Standings',badge:null},
+    {id:'reset',icon:'⑥',label:'Reset',badge:null}];
   return(
     <nav className="cp-nav shadow-xl sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-1 flex-wrap">
@@ -665,6 +666,89 @@ function StandingsPage({groups,matches}){
   );
 }
 
+/* PAGE 6 — RESET */
+function ResetPage({setWrestlers,setGroups,setUnassigned,setMatches,setNumMats,setPage}){
+  const [step,setStep]=useState('idle'); // idle | confirm | done
+
+  function doReset(){
+    setWrestlers([]);
+    setGroups([]);
+    setUnassigned([]);
+    setMatches([]);
+    setNumMats(2);
+    ['wrestlers','groups','unassigned','matches','numMats'].forEach(k=>{
+      try{localStorage.removeItem('cp_'+k);}catch(_){}
+    });
+    setStep('done');
+  }
+
+  return(
+    <div className="p-6 max-w-lg mx-auto mt-10">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-red-200">
+        <div className="bg-red-600 px-6 py-4">
+          <h1 className="text-xl font-bold text-white">⑥ Reset Tournament</h1>
+          <p className="text-red-200 text-sm mt-1">Clear all data and start fresh</p>
+        </div>
+
+        <div className="p-6">
+          {step==='idle'&&(
+            <>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                This will permanently erase <strong>all wrestlers, groups, matches, and results</strong> saved in this browser. The app will return to a blank state.
+              </p>
+              <ul className="text-sm text-gray-500 mb-8 space-y-1.5">
+                {['All uploaded wrestlers','All bracket groups','The full match schedule','All results and scores'].map(item=>(
+                  <li key={item} className="flex items-center gap-2"><span className="text-red-400 font-bold">✕</span>{item}</li>
+                ))}
+              </ul>
+              <button
+                onClick={()=>setStep('confirm')}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                Reset Tournament Data
+              </button>
+            </>
+          )}
+
+          {step==='confirm'&&(
+            <>
+              <div className="bg-red-50 border-2 border-red-400 rounded-xl p-5 mb-6 text-center">
+                <div className="text-4xl mb-2">⚠️</div>
+                <p className="font-bold text-red-800 text-lg">Are you sure?</p>
+                <p className="text-red-600 text-sm mt-1">This cannot be undone. All tournament data will be lost.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={()=>setStep('idle')}
+                  className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                  Cancel — Keep Data
+                </button>
+                <button
+                  onClick={doReset}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors text-sm">
+                  Yes, Reset Everything
+                </button>
+              </div>
+            </>
+          )}
+
+          {step==='done'&&(
+            <div className="text-center py-4">
+              <div className="text-5xl mb-4">✅</div>
+              <p className="font-bold text-gray-800 text-lg mb-1">Tournament Reset</p>
+              <p className="text-gray-500 text-sm mb-6">All data has been cleared. Ready for a new tournament.</p>
+              <button
+                onClick={()=>setPage('upload')}
+                className="cp-btn px-8 py-3 text-sm">
+                Start New Tournament →
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ROOT */
 function App(){
   const [page,setPage]=useState('upload');
@@ -687,6 +771,7 @@ function App(){
         {page==='schedule'  && <SchedulePage  groups={groups} numMats={numMats} setNumMats={setNumMats} matches={matches} setMatches={setMatches}/>}
         {page==='results'   && <ResultsPage   matches={matches} setMatches={setMatches}/>}
         {page==='standings' && <StandingsPage groups={groups} matches={matches}/>}
+        {page==='reset'     && <ResetPage setWrestlers={setWrestlers} setGroups={setGroups} setUnassigned={setUnassigned} setMatches={setMatches} setNumMats={setNumMats} setPage={setPage}/>}
       </div>
     </div>
   );
