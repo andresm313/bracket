@@ -8,6 +8,8 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
     body{background:#f3f4f6;margin:0;}
@@ -39,10 +41,19 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-const load = (k, fb) => {
-  try { const s = localStorage.getItem('cp_' + k); return s ? JSON.parse(s) : fb; }
-  catch(_) { return fb; }
+// ─── FIREBASE CONFIG ── paste the SAME config as index.html ──────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyB3F1G1cJWZllc_Vr_L49_42sXRQda3RkE",
+  authDomain:        "club-paw-tournament.firebaseapp.com",
+  databaseURL:       "https://club-paw-tournament-default-rtdb.firebaseio.com",
+  projectId:         "club-paw-tournament",
+  storageBucket:     "club-paw-tournament.firebasestorage.app",
+  messagingSenderId: "372778383531",
+  appId:             "1:372778383531:web:0f75a2732e57429b485fee"
 };
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+// ─────────────────────────────────────────────────────────────────────────────
 
 function computeStandings(group, matches) {
   const rows = group.wrestlers.map(w => ({ wrestler: w, wins:0, losses:0, pins:0, points:0 }));
@@ -481,26 +492,26 @@ function App() {
   const [page, setPage]               = useState('now');
   const [groups, setGroups]           = useState([]);
   const [matches, setMatches]         = useState([]);
-  const [lastUpdated, setLastUpdated] = useState('--:--');
-
-  function refresh() {
-    setGroups(load('groups', []));
-    setMatches(load('matches', []));
-    const now = new Date();
-    setLastUpdated(now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
-  }
+  const [lastUpdated, setLastUpdated] = useState('Connecting...');
 
   useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 15000);
-    return () => clearInterval(interval);
+    // Real-time listener — updates instantly when admin enters results
+    const ref = db.ref('clubpaw');
+    ref.on('value', snap => {
+      const d = snap.val() || {};
+      setGroups(d.groups || []);
+      setMatches(d.matches || []);
+      const now = new Date();
+      setLastUpdated(now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
+    });
+    return () => ref.off('value'); // cleanup on unmount
   }, []);
 
   return (
     <div className="min-h-screen" style={{background:'#f3f4f6'}}>
       <Nav page={page} setPage={setPage} lastUpdated={lastUpdated} />
       <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
-        👁 VIEW ONLY — Auto-refreshes every 15 seconds
+        👁 VIEW ONLY — Updates in real-time
       </div>
       <div className="max-w-7xl mx-auto px-4 py-6 pb-12">
         {page==='now'       && <NowWrestlingView matches={matches} />}
