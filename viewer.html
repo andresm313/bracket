@@ -129,13 +129,24 @@ function getBO3State(groupId, matches) {
   return { w1Wins, w2Wins, m1, m2, m3, seriesOver, seriesWinnerId, w1Id, w2Id };
 }
 
+function countableMatches(matches) {
+  return matches.filter(m => {
+    if (!m.bo3decider) return true;
+    if (m.winner) return true;
+    const bo3 = getBO3State(m.groupId, matches);
+    if (!bo3) return true;
+    return bo3.m1?.winner && bo3.m2?.winner && bo3.w1Wins===1 && bo3.w2Wins===1;
+  });
+}
+
 /* NOW WRESTLING */
 function NowWrestlingView({ matches }) {
   if (!matches.length) return <Empty message="Schedule not generated yet." />;
 
   const mats     = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
-  const totalDone = matches.filter(m => m.winner).length;
-  const totalPct  = Math.round(totalDone / matches.length * 100);
+  const countable  = countableMatches(matches);
+  const totalDone  = countable.filter(m => m.winner).length;
+  const totalPct   = countable.length ? Math.round(totalDone / countable.length * 100) : 0;
 
   // Pending matches per mat in round order — skip locked BO3 matches
   function getQueue(mat) {
@@ -182,7 +193,7 @@ function NowWrestlingView({ matches }) {
       <div className="bg-white rounded-2xl shadow p-4 mb-5">
         <div className="flex items-center justify-between mb-2 text-sm">
           <span className="font-semibold text-gray-700">Tournament Progress</span>
-          <span className="font-bold cp-gold-text">{totalDone} / {matches.length} matches · {totalPct}%</span>
+          <span className="font-bold cp-gold-text">{totalDone} / {countable.length} matches · {totalPct}%</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
           <div className="h-2 rounded-full transition-all" style={{width:totalPct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
@@ -412,8 +423,9 @@ function ScheduleView({ matches }) {
   if (!matches.length) return <Empty message="Schedule not generated yet." />;
   const rounds = [...new Set(matches.map(m => m.round))].sort((a,b) => a-b);
   const mats   = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
-  const done   = matches.filter(m => m.winner).length;
-  const pct    = Math.round(done/matches.length*100);
+  const schedCountable = countableMatches(matches);
+  const done   = schedCountable.filter(m => m.winner).length;
+  const pct    = schedCountable.length ? Math.round(done/schedCountable.length*100) : 0;
   const winLabel = m => {
     if (!m.winner) return null;
     const name = m.winner===m.w1.id?m.w1.name:m.w2.name;
@@ -424,7 +436,7 @@ function ScheduleView({ matches }) {
       <div className="bg-white rounded-2xl shadow p-4 mb-6">
         <div className="flex items-center justify-between mb-2 text-sm">
           <span className="font-semibold text-gray-700">Tournament Progress</span>
-          <span className="font-bold cp-gold-text">{done} / {matches.length} matches · {pct}%</span>
+          <span className="font-bold cp-gold-text">{done} / {schedCountable.length} matches · {pct}%</span>
         </div>
         <div className="h-3 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
           <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
