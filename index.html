@@ -510,27 +510,68 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
 }
 
 /* PAGE 4 — RESULTS */
+function MatchCard({m,pick,undo}){
+  const wName=m.winner?(m.winner===m.w1.id?m.w1.name:m.w2.name):null;
+  return(
+    <div className={`bg-white rounded-xl shadow border-2 p-3 transition-all mb-3 ${m.winner?'border-yellow-400':'border-gray-100'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
+        </div>
+        {m.winner&&<button onClick={()=>undo(m.id)} className="text-xs text-gray-400 hover:text-red-500 underline">Undo</button>}
+      </div>
+      {m.winner?(
+        <div className="rounded-lg p-2.5 text-center" style={{background:'#fef9e7',border:'1px solid #C9A227'}}>
+          <div className="font-bold text-sm">🏆 {wName}</div>
+          <div className="text-xs mt-0.5 cp-gold-text">{m.winType==='pin'?'Pin — 6 pts':'Points — 4 pts'}</div>
+        </div>
+      ):(
+        <div>
+          <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wider">Select winner:</p>
+          <div className="flex flex-col gap-2">
+            {[m.w1,m.w2].map(wrestler=>(
+              <div key={wrestler.id} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                <div className="font-bold text-xs mb-0.5">{wrestler.name}</div>
+                <div className="text-xs text-gray-400 mb-1.5">{wrestler.weight}lbs · {wrestler.experience[0]} · Age {wrestler.age}</div>
+                <div className="flex gap-1.5">
+                  <button onClick={()=>pick(m.id,wrestler.id,'pin')}
+                    className="flex-1 text-xs font-bold py-1.5 rounded-lg pin-btn">📌 Pin (6)</button>
+                  <button onClick={()=>pick(m.id,wrestler.id,'points')}
+                    className="flex-1 text-xs font-bold py-1.5 rounded-lg pts-btn">✓ Pts (4)</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultsPage({matches,setMatches}){
   const [filter,setFilter]=useState('all');
   const pick=(id,wId,type)=>setMatches(matches.map(m=>m.id===id?{...m,winner:wId,winType:type}:m));
   const undo=(id)=>setMatches(matches.map(m=>m.id===id?{...m,winner:null,winType:null}:m));
   const rounds=[...new Set(matches.map(m=>m.round))].sort((a,b)=>a-b);
+  const mats=[...new Set(matches.map(m=>m.mat))].sort((a,b)=>a-b);
   const done=matches.filter(m=>m.winner).length;
   const pct=matches.length?Math.round(done/matches.length*100):0;
-  const filtered=(round)=>matches.filter(m=>{
-    if(m.round!==round)return false;
-    if(filter==='pending')return !m.winner;
-    if(filter==='completed')return !!m.winner;
+
+  const visible=(m)=>{
+    if(filter==='pending')   return !m.winner;
+    if(filter==='completed') return !!m.winner;
     return true;
-  });
+  };
+
   return(
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6" style={{color:'#111'}}>④ Live Results Entry</h1>
+    <div className="p-4 max-w-full mx-auto">
+      <h1 className="text-2xl font-bold mb-4" style={{color:'#111'}}>④ Live Results Entry</h1>
       {matches.length===0?(
-        <div className="cp-info rounded-2xl p-10 text-center"><div className="text-4xl mb-3">🎯</div>Generate a schedule first (Step ③).</div>
+        <div className="cp-info rounded-2xl p-10 text-center max-w-lg mx-auto"><div className="text-4xl mb-3">🎯</div>Generate a schedule first (Step ③).</div>
       ):(
         <>
-          <div className="bg-white rounded-2xl shadow p-4 mb-6">
+          {/* Progress bar */}
+          <div className="bg-white rounded-2xl shadow p-4 mb-5">
             <div className="flex items-center justify-between mb-2 text-sm">
               <span className="font-semibold" style={{color:'#111'}}>Tournament Progress</span>
               <span className="font-bold cp-gold-text">{done} / {matches.length} · {pct}%</span>
@@ -538,65 +579,64 @@ function ResultsPage({matches,setMatches}){
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
             </div>
-            <div className="flex gap-2 mt-3">
-              {['all','pending','completed'].map(f=>(
-                <button key={f} onClick={()=>setFilter(f)} className={`px-3 py-1 rounded-lg text-xs font-medium capitalize`} style={filter===f?{background:'#C9A227',color:'#111'}:{background:'#f3f4f6',color:'#555'}}>{f}</button>
-              ))}
-            </div>
-            <div className="mt-3 pt-3 border-t flex items-center gap-6 text-xs text-gray-500">
-              <div className="flex items-center gap-1.5"><span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:'#111'}}></span><strong>📌 Pin = 6 pts</strong></div>
-              <div className="flex items-center gap-1.5"><span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:'#4ade80'}}></span><strong>✓ Points = 4 pts</strong></div>
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex gap-2">
+                {['all','pending','completed'].map(f=>(
+                  <button key={f} onClick={()=>setFilter(f)} className="px-3 py-1 rounded-lg text-xs font-medium capitalize"
+                    style={filter===f?{background:'#C9A227',color:'#111'}:{background:'#f3f4f6',color:'#555'}}>{f}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#111'}}></span> Pin=6pts</span>
+                <span className="flex items-center gap-1"><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:'#4ade80'}}></span> Pts=4pts</span>
+              </div>
             </div>
           </div>
-          {rounds.map(round=>{
-            const rm=filtered(round);
-            if(!rm.length)return null;
-            return(
-              <div key={round} className="mb-6">
-                <h2 className="font-bold mb-3 px-4 py-2 rounded-xl text-white" style={{background:'#111'}}>
-                  Round {round} <span className="ml-2 font-normal text-sm cp-gold-text">({matches.filter(m=>m.round===round&&m.winner).length}/{matches.filter(m=>m.round===round).length})</span>
-                </h2>
-                <div className="space-y-4">
-                  {rm.map(m=>{
-                    const wName=m.winner?(m.winner===m.w1.id?m.w1.name:m.w2.name):null;
-                    return(
-                      <div key={m.id} className={`bg-white rounded-2xl shadow border-2 p-4 transition-all ${m.winner?'border-yellow-400':'border-transparent'}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111'}}>Group {m.groupLabel}</span>
-                            <span className="text-xs text-gray-400">Mat {m.mat}</span>
+
+          {/* Mat columns — one column per mat, rounds stack inside each */}
+          <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
+            {mats.map(mat=>{
+              const matMatches=matches.filter(m=>m.mat===mat&&visible(m));
+              const matDone=matches.filter(m=>m.mat===mat&&m.winner).length;
+              const matTotal=matches.filter(m=>m.mat===mat).length;
+              return(
+                <div key={mat} className="flex-shrink-0 rounded-2xl overflow-hidden shadow-lg"
+                  style={{minWidth:320,width:320,background:'#f8f8f8',border:'2px solid #e5e7eb'}}>
+                  {/* Mat header */}
+                  <div className="text-white text-center py-3 px-4" style={{background:'#111'}}>
+                    <div className="font-black text-xl tracking-wide">Mat {mat}</div>
+                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matTotal} matches done</div>
+                  </div>
+
+                  {/* Rounds within this mat */}
+                  <div className="p-3">
+                    {rounds.map(round=>{
+                      const rm=matMatches.filter(m=>m.round===round);
+                      if(!rm.length) return null;
+                      const rDone=matches.filter(m=>m.mat===mat&&m.round===round&&m.winner).length;
+                      const rTotal=matches.filter(m=>m.mat===mat&&m.round===round).length;
+                      return(
+                        <div key={round} className="mb-4">
+                          <div className="flex items-center gap-2 mb-2 px-1">
+                            <span className="font-bold text-sm text-white px-3 py-1 rounded-full" style={{background:'#333'}}>
+                              Round {round}
+                            </span>
+                            <span className="text-xs text-gray-400">{rDone}/{rTotal}</span>
                           </div>
-                          {m.winner&&<button onClick={()=>undo(m.id)} className="text-xs text-gray-400 hover:text-red-500 underline">Undo</button>}
+                          {rm.map(m=><MatchCard key={m.id} m={m} pick={pick} undo={undo}/>)}
                         </div>
-                        {m.winner?(
-                          <div className="rounded-xl p-3 text-center" style={{background:'#fef9e7',border:'1.5px solid #C9A227'}}>
-                            <div className="font-bold text-lg">🏆 {wName}</div>
-                            <div className="text-sm mt-1 cp-gold-text">Won by <strong>{m.winType==='pin'?'Pin — 6 points':'Points — 4 points'}</strong></div>
-                          </div>
-                        ):(
-                          <div>
-                            <p className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wider">Select winner &amp; win type:</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {[m.w1,m.w2].map(wrestler=>(
-                                <div key={wrestler.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-                                  <div className="font-bold text-sm mb-0.5">{wrestler.name}</div>
-                                  <div className="text-xs text-gray-400 mb-3">{wrestler.weight}lbs · {wrestler.experience} · Age {wrestler.age}</div>
-                                  <div className="flex flex-col gap-2">
-                                    <button onClick={()=>pick(m.id,wrestler.id,'pin')} className="pin-btn text-xs">📌 Win by Pin <span style={{opacity:.7}}>(6 pts)</span></button>
-                                    <button onClick={()=>pick(m.id,wrestler.id,'points')} className="pts-btn text-xs">✓ Win by Points <span style={{opacity:.7}}>(4 pts)</span></button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                      );
+                    })}
+                    {matMatches.length===0&&(
+                      <div className="text-center text-gray-400 text-xs py-6">
+                        {filter==='pending'?'All matches complete ✓':'No matches yet'}
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </>
       )}
     </div>
