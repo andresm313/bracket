@@ -10,8 +10,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
-    body{background:#111;margin:0;}
-    .cp-nav{background:#000;}
+    body{background:#f3f4f6;margin:0;}
+    .cp-nav{background:#111111;}
     .cp-gold-text{color:var(--gold);}
     .cp-nav-active{background:var(--gold);color:#111!important;font-weight:700;}
     .cp-nav-inactive{color:#d4b483;}
@@ -21,17 +21,17 @@
     .badge-a{background:#fee2e2;color:#991b1b;}
     .pulse{animation:pulse 1.5s infinite;}
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-    .mat-col{background:#161616;border-radius:1.25rem;overflow:hidden;flex:1;min-width:260px;}
+    .mat-col{background:#fff;border-radius:1.25rem;overflow:hidden;flex:1;min-width:260px;box-shadow:0 2px 12px rgba(0,0,0,.08);}
     .mat-header{background:#C9A227;color:#111;padding:.75rem 1rem;font-weight:900;font-size:1.25rem;text-align:center;letter-spacing:.05em;}
-    .now-card{background:#1a1a1a;border:2px solid #C9A227;border-radius:1rem;padding:.9rem;}
-    .queue-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:.85rem;padding:.7rem;}
-    .done-card{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:.85rem;padding:.65rem;}
+    .now-card{background:#fffbeb;border:2px solid #C9A227;border-radius:1rem;padding:.9rem;}
+    .queue-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:.85rem;padding:.7rem;}
+    .done-card{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.85rem;padding:.65rem;}
     .lbl-now{background:#C9A227;color:#111;font-size:.6rem;font-weight:800;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.1em;text-transform:uppercase;}
-    .lbl-next{background:#2a2a2a;color:#aaa;font-size:.6rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase;}
-    .lbl-soon{background:#1e1e1e;color:#666;font-size:.6rem;font-weight:600;padding:.12rem .5rem;border-radius:9999px;letter-spacing:.06em;text-transform:uppercase;}
-    .vs-pill{background:#2a2a2a;color:#777;font-size:.65rem;font-weight:800;padding:.12rem .45rem;border-radius:9999px;flex-shrink:0;}
-    .w-name{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .w-sub{font-size:.7rem;color:#555;margin-top:.1rem;}
+    .lbl-next{background:#e5e7eb;color:#555;font-size:.6rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase;}
+    .lbl-soon{background:#f3f4f6;color:#9ca3af;font-size:.6rem;font-weight:600;padding:.12rem .5rem;border-radius:9999px;letter-spacing:.06em;text-transform:uppercase;}
+    .vs-pill{background:#e5e7eb;color:#9ca3af;font-size:.65rem;font-weight:800;padding:.12rem .45rem;border-radius:9999px;flex-shrink:0;}
+    .w-name{font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .w-sub{font-size:.7rem;color:#9ca3af;margin-top:.1rem;}
   </style>
 </head>
 <body>
@@ -137,12 +137,12 @@ function NowWrestlingView({ matches }) {
   return (
     <div>
       {/* Progress */}
-      <div className="rounded-2xl p-4 mb-5" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
+      <div className="bg-white rounded-2xl shadow p-4 mb-5">
         <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="font-semibold text-gray-300">Tournament Progress</span>
+          <span className="font-semibold text-gray-700">Tournament Progress</span>
           <span className="font-bold cp-gold-text">{totalDone} / {matches.length} matches · {totalPct}%</span>
         </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{background:'#333'}}>
+        <div className="h-2 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
           <div className="h-2 rounded-full transition-all" style={{width:totalPct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
         </div>
       </div>
@@ -164,11 +164,11 @@ function NowWrestlingView({ matches }) {
 
               {/* Mat mini progress */}
               <div className="px-4 pt-2.5 pb-1">
-                <div className="flex justify-between mb-1" style={{fontSize:'.68rem',color:'#555'}}>
+                <div className="flex justify-between mb-1" style={{fontSize:'.68rem',color:'#9ca3af'}}>
                   <span>{matDone}/{matTotal} done</span>
                   <span>{Math.round(matDone/matTotal*100)||0}%</span>
                 </div>
-                <div className="h-1 rounded-full" style={{background:'#2a2a2a'}}>
+                <div className="h-1 rounded-full" style={{background:'#e5e7eb'}}>
                   <div className="h-1 rounded-full" style={{width:(matDone/matTotal*100||0)+'%',background:'#C9A227'}}/>
                 </div>
               </div>
@@ -177,7 +177,7 @@ function NowWrestlingView({ matches }) {
                 {allDone ? (
                   <div className="text-center py-10">
                     <div className="text-3xl mb-2">✅</div>
-                    <p className="font-bold text-sm" style={{color:'#4ade80'}}>All done on this mat!</p>
+                    <p className="font-bold text-sm" style={{color:'#16a34a'}}>All done on this mat!</p>
                   </div>
                 ) : (
                   <>
@@ -191,7 +191,7 @@ function NowWrestlingView({ matches }) {
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.6rem'}}>
                               {m.groupLabel}
                             </span>
-                            <span className="ml-auto text-xs" style={{color:'#444',fontSize:'.65rem'}}>Rnd {m.round}</span>
+                            <span className="ml-auto text-xs" style={{color:'#9ca3af',fontSize:'.65rem'}}>Rnd {m.round}</span>
                           </div>
 
                           {/* Wrestlers */}
@@ -219,13 +219,13 @@ function NowWrestlingView({ matches }) {
                     {lastDone && (
                       <div className="done-card mt-1">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span style={{color:'#4ade80',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
-                          <span className="ml-auto" style={{color:'#333',fontSize:'.62rem'}}>Rnd {lastDone.round}</span>
+                          <span style={{color:'#16a34a',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
+                          <span className="ml-auto" style={{color:'#9ca3af',fontSize:'.62rem'}}>Rnd {lastDone.round}</span>
                         </div>
                         <div style={{fontSize:'.75rem',color:'#666'}}>
                           <span className={lastDone.winner===lastDone.w1.id?'text-green-400 font-bold':''}>{lastDone.w1.name}</span>
-                          <span className="mx-1" style={{color:'#444'}}>vs</span>
-                          <span className={lastDone.winner===lastDone.w2.id?'text-green-400 font-bold':''}>{lastDone.w2.name}</span>
+                          <span className="mx-1" style={{color:'#d1d5db'}}>vs</span>
+                          <span className={lastDone.winner===lastDone.w2.id?'text-green-600 font-bold':''}>{lastDone.w2.name}</span>
                         </div>
                         <div style={{fontSize:'.72rem',marginTop:'.25rem',color:'#C9A227'}}>
                           🏆 {lastDone.winner===lastDone.w1.id?lastDone.w1.name:lastDone.w2.name} — {lastDone.winType==='pin'?'Pin (6pts)':'Points (4pts)'}
@@ -258,8 +258,8 @@ function StandingsView({ groups, matches }) {
         const pct       = total ? Math.round(completed/total*100) : 0;
         const is2       = group.wrestlers.length === 2;
         return (
-          <div key={group.id} className="rounded-2xl overflow-hidden shadow" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
-            <div className="px-5 py-3 flex items-center justify-between" style={{background:'#111'}}>
+          <div key={group.id} className="rounded-2xl overflow-hidden shadow" style={{background:'#fff',border:'none'}}>
+            <div className="px-5 py-3 flex items-center justify-between" style={{background:'#111111'}}>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-xl text-white">Group {group.label}</span>
                 {is2 && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{background:'#C9A227',color:'#111'}}>2-person</span>}
@@ -270,13 +270,13 @@ function StandingsView({ groups, matches }) {
               </div>
             </div>
             {total > 0 && (
-              <div className="h-1.5" style={{background:'#333'}}>
+              <div className="h-1.5" style={{background:'#e5e7eb'}}>
                 <div className="h-1.5 transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
               </div>
             )}
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wide" style={{background:'#111',color:'#555'}}>
+                <tr className="text-xs uppercase tracking-wide" style={{background:'#f9fafb',color:'#6b7280'}}>
                   <th className="text-left px-4 py-2">Place</th>
                   <th className="text-left px-4 py-2">Wrestler</th>
                   <th className="text-left px-4 py-2 hidden sm:table-cell">Level</th>
@@ -288,20 +288,20 @@ function StandingsView({ groups, matches }) {
               </thead>
               <tbody>
                 {standings.map((s,i) => (
-                  <tr key={s.wrestler.id} className="border-t"
-                    style={{borderColor:'#222',background:i===0&&finished?'#1c1900':'transparent'}}>
+                  <tr key={s.wrestler.id} className="border-t transition-colors"
+                    style={{borderColor:'#f3f4f6',background:i===0&&finished?'#fefce8':'transparent'}}>
                     <td className="px-4 py-3 text-lg text-center w-14">{ICONS[i]||`${i+1}.`}</td>
-                    <td className="px-4 py-3 font-semibold text-white">{s.wrestler.name}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">{s.wrestler.name}</td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <Badge text={s.wrestler.experience}/>
-                        <span className="text-xs" style={{color:'#555'}}>{s.wrestler.weight}lbs · Age {s.wrestler.age}</span>
+                        <span className="text-xs" style={{color:'#9ca3af'}}>{s.wrestler.weight}lbs · Age {s.wrestler.age}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-center font-bold text-green-500">{s.wins}</td>
+                    <td className="px-3 py-3 text-center font-bold text-green-700">{s.wins}</td>
                     <td className="px-3 py-3 text-center text-red-400">{s.losses}</td>
                     <td className="px-3 py-3 text-center font-bold cp-gold-text">{s.pins}</td>
-                    <td className="px-3 py-3 text-center font-bold text-xl text-white">{s.points}</td>
+                    <td className="px-3 py-3 text-center font-bold text-xl" style={{color:'#111'}}>{s.points}</td>
                   </tr>
                 ))}
               </tbody>
@@ -327,12 +327,12 @@ function ScheduleView({ matches }) {
   };
   return (
     <div>
-      <div className="rounded-2xl p-4 mb-6" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
+      <div className="bg-white rounded-2xl shadow p-4 mb-6">
         <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="font-semibold text-gray-300">Tournament Progress</span>
+          <span className="font-semibold text-gray-700">Tournament Progress</span>
           <span className="font-bold cp-gold-text">{done} / {matches.length} matches · {pct}%</span>
         </div>
-        <div className="h-3 rounded-full overflow-hidden" style={{background:'#333'}}>
+        <div className="h-3 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
           <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
         </div>
       </div>
@@ -340,7 +340,7 @@ function ScheduleView({ matches }) {
         <div key={round} className="mb-7">
           <div className="flex items-center gap-3 mb-3">
             <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>Round {round}</h2>
-            <span className="text-sm" style={{color:'#555'}}>
+            <span className="text-sm" style={{color:'#9ca3af'}}>
               {matches.filter(m=>m.round===round&&m.winner).length} / {matches.filter(m=>m.round===round).length} done
             </span>
           </div>
@@ -349,19 +349,19 @@ function ScheduleView({ matches }) {
               const mm = matches.filter(m => m.round===round && m.mat===mat);
               if (!mm.length) return null;
               return (
-                <div key={mat} className="rounded-2xl shadow p-4" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
+                <div key={mat} className="bg-white rounded-2xl shadow p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <span className="text-white font-bold px-3 py-1 rounded-lg text-sm" style={{background:'#111'}}>Mat {mat}</span>
-                    <span className="text-xs" style={{color:'#555'}}>{mm.filter(m=>m.winner).length}/{mm.length} done</span>
+                    <span className="text-xs" style={{color:'#9ca3af'}}>{mm.filter(m=>m.winner).length}/{mm.length} done</span>
                   </div>
                   <div className="space-y-2">
                     {mm.map(m => (
-                      <div key={m.id} className="px-3 py-3 rounded-xl text-sm" style={{background:m.winner?'#1c1900':'#222'}}>
+                      <div key={m.id} className="px-3 py-3 rounded-xl text-sm" style={{background:m.winner?'#fefce8':'#f9fafb'}}>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
-                          <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-400':'text-white'}`}>{m.w1.name}</span>
-                          <span className="font-bold text-xs shrink-0" style={{color:'#444'}}>VS</span>
-                          <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-400':'text-white'}`}>{m.w2.name}</span>
+                          <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':'text-gray-900'}`}>{m.w1.name}</span>
+                          <span className="font-bold text-xs shrink-0" style={{color:'#d1d5db'}}>VS</span>
+                          <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':'text-gray-900'}`}>{m.w2.name}</span>
                           {m.winner?<span className="text-green-500 shrink-0">✓</span>:<span className="text-xs shrink-0" style={{color:'#444'}}>—</span>}
                         </div>
                         {m.winner && <div className="text-xs mt-1.5 pl-1 font-medium cp-gold-text">🏆 {winLabel(m)}</div>}
@@ -399,7 +399,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{background:'#111'}}>
+    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
       <Nav page={page} setPage={setPage} lastUpdated={lastUpdated} />
       <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
         👁 VIEW ONLY — Auto-refreshes every 15 seconds
