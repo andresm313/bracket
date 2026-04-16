@@ -10,19 +10,28 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111111;}
-    body{background:#f3f4f6;}
-    .cp-nav{background:var(--black);}
-    .cp-dark{background:var(--black);color:#fff;}
-    .cp-gold{background:var(--gold);color:var(--black);}
+    body{background:#111;margin:0;}
+    .cp-nav{background:#000;}
     .cp-gold-text{color:var(--gold);}
-    .cp-nav-active{background:var(--gold);color:var(--black)!important;font-weight:700;}
+    .cp-nav-active{background:var(--gold);color:#111!important;font-weight:700;}
     .cp-nav-inactive{color:#d4b483;}
     .cp-nav-inactive:hover{background:#222;}
     .badge-b{background:#d1fae5;color:#065f46;}
     .badge-i{background:#fef3c7;color:#92400e;}
     .badge-a{background:#fee2e2;color:#991b1b;}
-    .pulse{animation:pulse 2s infinite;}
-    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+    .pulse{animation:pulse 1.5s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+    .mat-col{background:#161616;border-radius:1.25rem;overflow:hidden;flex:1;min-width:260px;}
+    .mat-header{background:#C9A227;color:#111;padding:.75rem 1rem;font-weight:900;font-size:1.25rem;text-align:center;letter-spacing:.05em;}
+    .now-card{background:#1a1a1a;border:2px solid #C9A227;border-radius:1rem;padding:.9rem;}
+    .queue-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:.85rem;padding:.7rem;}
+    .done-card{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:.85rem;padding:.65rem;}
+    .lbl-now{background:#C9A227;color:#111;font-size:.6rem;font-weight:800;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.1em;text-transform:uppercase;}
+    .lbl-next{background:#2a2a2a;color:#aaa;font-size:.6rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase;}
+    .lbl-soon{background:#1e1e1e;color:#666;font-size:.6rem;font-weight:600;padding:.12rem .5rem;border-radius:9999px;letter-spacing:.06em;text-transform:uppercase;}
+    .vs-pill{background:#2a2a2a;color:#777;font-size:.65rem;font-weight:800;padding:.12rem .45rem;border-radius:9999px;flex-shrink:0;}
+    .w-name{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .w-sub{font-size:.7rem;color:#555;margin-top:.1rem;}
   </style>
 </head>
 <body>
@@ -30,54 +39,52 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-/* ── LOCAL STORAGE (read-only, same keys as main app) ── */
 const load = (k, fb) => {
   try { const s = localStorage.getItem('cp_' + k); return s ? JSON.parse(s) : fb; }
   catch(_) { return fb; }
 };
 
-/* ── STANDINGS ── */
 function computeStandings(group, matches) {
-  const rows = group.wrestlers.map(w => ({ wrestler: w, wins: 0, losses: 0, pins: 0, points: 0 }));
+  const rows = group.wrestlers.map(w => ({ wrestler: w, wins:0, losses:0, pins:0, points:0 }));
   matches.filter(m => m.groupId === group.id && m.winner).forEach(m => {
     const loserId = m.winner === m.w1.id ? m.w2.id : m.w1.id;
     const win = rows.find(r => r.wrestler.id === m.winner);
     const los = rows.find(r => r.wrestler.id === loserId);
-    if (win) { win.wins++; win.points += m.winType === 'pin' ? 6 : 4; if (m.winType === 'pin') win.pins++; }
+    if (win) { win.wins++; win.points += m.winType==='pin'?6:4; if(m.winType==='pin') win.pins++; }
     if (los) los.losses++;
   });
-  rows.sort((a, b) => b.points - a.points || b.wins - a.wins || b.pins - a.pins);
+  rows.sort((a,b) => b.points-a.points || b.wins-a.wins || b.pins-a.pins);
   return rows;
 }
 
-/* ── BADGE ── */
 function Badge({ text }) {
-  const cls = text === 'Beginner' ? 'badge-b' : text === 'Intermediate' ? 'badge-i' : 'badge-a';
-  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{text ? text[0] : '?'}</span>;
+  const cls = text==='Beginner'?'badge-b':text==='Intermediate'?'badge-i':'badge-a';
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{text?text[0]:'?'}</span>;
 }
 
-/* ── NAV ── */
+/* NAV */
 function Nav({ page, setPage, lastUpdated }) {
   const tabs = [
-    { id: 'standings', label: '🏆 Standings' },
-    { id: 'schedule',  label: '📋 Schedule'  },
+    { id:'now',       label:'🟢 Now Wrestling' },
+    { id:'standings', label:'🏆 Standings'     },
+    { id:'schedule',  label:'📋 Schedule'       },
   ];
   return (
     <nav className="cp-nav shadow-xl sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="font-bold cp-gold-text text-base tracking-widest">🐾 CLUB PAW</div>
-          <span className="text-gray-500 text-xs hidden sm:block">Tournament Viewer</span>
+          <span className="text-gray-600 text-xs hidden sm:block">Tournament Viewer</span>
         </div>
         <div className="flex items-center gap-1">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setPage(t.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${page === t.id ? 'cp-nav-active' : 'cp-nav-inactive'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${page===t.id?'cp-nav-active':'cp-nav-inactive'}`}>
               {t.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs" style={{color:'#555'}}>
           <span className="pulse" style={{color:'#C9A227'}}>●</span>
           <span>Live · {lastUpdated}</span>
         </div>
@@ -86,84 +93,215 @@ function Nav({ page, setPage, lastUpdated }) {
   );
 }
 
-/* ── EMPTY STATE ── */
 function Empty({ message }) {
   return (
-    <div className="bg-white rounded-2xl shadow p-12 text-center text-gray-400 max-w-md mx-auto mt-8">
+    <div className="rounded-2xl p-12 text-center max-w-md mx-auto mt-8" style={{background:'#1a1a1a',border:'1px solid #333'}}>
       <div className="text-5xl mb-4">🐾</div>
-      <p className="font-medium">{message}</p>
-      <p className="text-xs mt-2 text-gray-300">Data will appear here once the tournament director sets up the brackets.</p>
+      <p className="font-medium text-gray-400">{message}</p>
+      <p className="text-xs mt-2" style={{color:'#444'}}>Data will appear once the tournament director sets up the brackets.</p>
     </div>
   );
 }
 
-/* ── STANDINGS PAGE ── */
+/* NOW WRESTLING */
+function NowWrestlingView({ matches }) {
+  if (!matches.length) return <Empty message="Schedule not generated yet." />;
+
+  const mats     = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
+  const totalDone = matches.filter(m => m.winner).length;
+  const totalPct  = Math.round(totalDone / matches.length * 100);
+
+  // Pending matches per mat in round order
+  function getQueue(mat) {
+    return matches
+      .filter(m => m.mat === mat && !m.winner)
+      .sort((a,b) => a.round - b.round);
+  }
+
+  // Most recently completed match on this mat
+  function getLastDone(mat) {
+    const done = matches
+      .filter(m => m.mat === mat && m.winner)
+      .sort((a,b) => b.round - a.round);
+    return done[0] || null;
+  }
+
+  const SLOTS = [
+    { lbl:'ON MAT NOW', cls:'lbl-now',  card:'now-card',   nameSize:'text-base', divider:true  },
+    { lbl:'UP NEXT',    cls:'lbl-next', card:'queue-card',  nameSize:'text-sm',   divider:false },
+    { lbl:'AFTER NEXT', cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
+    { lbl:'COMING UP',  cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
+    { lbl:'COMING UP',  cls:'lbl-soon', card:'queue-card',  nameSize:'text-sm',   divider:false },
+  ];
+
+  return (
+    <div>
+      {/* Progress */}
+      <div className="rounded-2xl p-4 mb-5" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
+        <div className="flex items-center justify-between mb-2 text-sm">
+          <span className="font-semibold text-gray-300">Tournament Progress</span>
+          <span className="font-bold cp-gold-text">{totalDone} / {matches.length} matches · {totalPct}%</span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{background:'#333'}}>
+          <div className="h-2 rounded-full transition-all" style={{width:totalPct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
+        </div>
+      </div>
+
+      {/* Mat columns */}
+      <div className="flex gap-3 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
+        {mats.map(mat => {
+          const queue    = getQueue(mat);
+          const lastDone = getLastDone(mat);
+          const matTotal = matches.filter(m => m.mat===mat).length;
+          const matDone  = matches.filter(m => m.mat===mat && m.winner).length;
+          const allDone  = matTotal > 0 && matDone === matTotal;
+
+          return (
+            <div key={mat} className="mat-col" style={{flex:'1 1 270px',minWidth:265}}>
+
+              {/* Mat header */}
+              <div className="mat-header">Mat {mat}</div>
+
+              {/* Mat mini progress */}
+              <div className="px-4 pt-2.5 pb-1">
+                <div className="flex justify-between mb-1" style={{fontSize:'.68rem',color:'#555'}}>
+                  <span>{matDone}/{matTotal} done</span>
+                  <span>{Math.round(matDone/matTotal*100)||0}%</span>
+                </div>
+                <div className="h-1 rounded-full" style={{background:'#2a2a2a'}}>
+                  <div className="h-1 rounded-full" style={{width:(matDone/matTotal*100||0)+'%',background:'#C9A227'}}/>
+                </div>
+              </div>
+
+              <div className="p-3 space-y-2">
+                {allDone ? (
+                  <div className="text-center py-10">
+                    <div className="text-3xl mb-2">✅</div>
+                    <p className="font-bold text-sm" style={{color:'#4ade80'}}>All done on this mat!</p>
+                  </div>
+                ) : (
+                  <>
+                    {queue.slice(0, 5).map((m, idx) => {
+                      const slot = SLOTS[idx] || SLOTS[4];
+                      return (
+                        <div key={m.id} className={slot.card}>
+                          {/* Label row */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={slot.cls}>{slot.lbl}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.6rem'}}>
+                              {m.groupLabel}
+                            </span>
+                            <span className="ml-auto text-xs" style={{color:'#444',fontSize:'.65rem'}}>Rnd {m.round}</span>
+                          </div>
+
+                          {/* Wrestlers */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className={`w-name ${slot.nameSize}`}>{m.w1.name}</div>
+                              <div className="w-sub">{m.w1.weight}lbs · Age {m.w1.age}</div>
+                            </div>
+                            <span className="vs-pill">VS</span>
+                            <div className="flex-1 min-w-0 text-right">
+                              <div className={`w-name ${slot.nameSize}`}>{m.w2.name}</div>
+                              <div className="w-sub">{m.w2.weight}lbs · Age {m.w2.age}</div>
+                            </div>
+                          </div>
+
+                          {/* Gold accent line under ON MAT NOW */}
+                          {slot.divider && (
+                            <div className="mt-2 h-px rounded-full" style={{background:'linear-gradient(to right,#C9A227,transparent)'}}/>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Last completed on this mat */}
+                    {lastDone && (
+                      <div className="done-card mt-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span style={{color:'#4ade80',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
+                          <span className="ml-auto" style={{color:'#333',fontSize:'.62rem'}}>Rnd {lastDone.round}</span>
+                        </div>
+                        <div style={{fontSize:'.75rem',color:'#666'}}>
+                          <span className={lastDone.winner===lastDone.w1.id?'text-green-400 font-bold':''}>{lastDone.w1.name}</span>
+                          <span className="mx-1" style={{color:'#444'}}>vs</span>
+                          <span className={lastDone.winner===lastDone.w2.id?'text-green-400 font-bold':''}>{lastDone.w2.name}</span>
+                        </div>
+                        <div style={{fontSize:'.72rem',marginTop:'.25rem',color:'#C9A227'}}>
+                          🏆 {lastDone.winner===lastDone.w1.id?lastDone.w1.name:lastDone.w2.name} — {lastDone.winType==='pin'?'Pin (6pts)':'Points (4pts)'}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* STANDINGS */
 function StandingsView({ groups, matches }) {
-  const ICONS = ['🥇', '🥈', '🥉', '4th'];
-
+  const ICONS = ['🥇','🥈','🥉','4th'];
   if (!groups.length) return <Empty message="No groups created yet." />;
-
   return (
     <div className="space-y-6">
       {groups.map(group => {
-        const standings   = computeStandings(group, matches);
-        const gm          = matches.filter(m => m.groupId === group.id);
-        const total       = gm.length;
-        const completed   = gm.filter(m => m.winner).length;
-        const finished    = total > 0 && completed === total;
-        const pct         = total ? Math.round(completed / total * 100) : 0;
-        const is2         = group.wrestlers.length === 2;
-
+        const standings = computeStandings(group, matches);
+        const gm        = matches.filter(m => m.groupId===group.id);
+        const total     = gm.length;
+        const completed = gm.filter(m => m.winner).length;
+        const finished  = total > 0 && completed === total;
+        const pct       = total ? Math.round(completed/total*100) : 0;
+        const is2       = group.wrestlers.length === 2;
         return (
-          <div key={group.id} className="bg-white rounded-2xl shadow overflow-hidden">
-            {/* Header */}
-            <div className="cp-dark px-5 py-3 flex items-center justify-between">
+          <div key={group.id} className="rounded-2xl overflow-hidden shadow" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
+            <div className="px-5 py-3 flex items-center justify-between" style={{background:'#111'}}>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xl">Group {group.label}</span>
+                <span className="font-bold text-xl text-white">Group {group.label}</span>
                 {is2 && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{background:'#C9A227',color:'#111'}}>2-person</span>}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm" style={{color:'#C9A227'}}>{completed}/{total} matches</span>
+                <span className="text-sm cp-gold-text">{completed}/{total} matches</span>
                 {finished && <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">FINAL</span>}
               </div>
             </div>
-
-            {/* Progress bar */}
             {total > 0 && (
-              <div className="h-2 bg-gray-100">
-                <div className="h-2 transition-all" style={{width: pct + '%', background: 'linear-gradient(to right,#C9A227,#A8841E)'}} />
+              <div className="h-1.5" style={{background:'#333'}}>
+                <div className="h-1.5 transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
               </div>
             )}
-
-            {/* Standings table */}
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                <tr className="text-xs uppercase tracking-wide" style={{background:'#111',color:'#555'}}>
                   <th className="text-left px-4 py-2">Place</th>
                   <th className="text-left px-4 py-2">Wrestler</th>
                   <th className="text-left px-4 py-2 hidden sm:table-cell">Level</th>
-                  <th className="text-center px-3 py-2 text-green-700">W</th>
-                  <th className="text-center px-3 py-2 text-red-400">L</th>
-                  <th className="text-center px-3 py-2" style={{color:'#C9A227'}}>Pins</th>
-                  <th className="text-center px-3 py-2" style={{color:'#111'}}>Pts</th>
+                  <th className="text-center px-3 py-2 text-green-600">W</th>
+                  <th className="text-center px-3 py-2 text-red-500">L</th>
+                  <th className="text-center px-3 py-2 cp-gold-text">Pins</th>
+                  <th className="text-center px-3 py-2 text-white">Pts</th>
                 </tr>
               </thead>
               <tbody>
-                {standings.map((s, i) => (
-                  <tr key={s.wrestler.id}
-                    className={`border-t transition-colors ${i === 0 && finished ? 'bg-yellow-50' : ''}`}>
-                    <td className="px-4 py-3 text-lg text-center w-14">{ICONS[i] || `${i+1}.`}</td>
-                    <td className="px-4 py-3 font-semibold">{s.wrestler.name}</td>
+                {standings.map((s,i) => (
+                  <tr key={s.wrestler.id} className="border-t"
+                    style={{borderColor:'#222',background:i===0&&finished?'#1c1900':'transparent'}}>
+                    <td className="px-4 py-3 text-lg text-center w-14">{ICONS[i]||`${i+1}.`}</td>
+                    <td className="px-4 py-3 font-semibold text-white">{s.wrestler.name}</td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
-                        <Badge text={s.wrestler.experience} />
-                        <span className="text-gray-400 text-xs">{s.wrestler.weight}lbs · Age {s.wrestler.age}</span>
+                        <Badge text={s.wrestler.experience}/>
+                        <span className="text-xs" style={{color:'#555'}}>{s.wrestler.weight}lbs · Age {s.wrestler.age}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-center font-bold text-green-700">{s.wins}</td>
+                    <td className="px-3 py-3 text-center font-bold text-green-500">{s.wins}</td>
                     <td className="px-3 py-3 text-center text-red-400">{s.losses}</td>
-                    <td className="px-3 py-3 text-center font-bold" style={{color:'#C9A227'}}>{s.pins}</td>
-                    <td className="px-3 py-3 text-center font-bold text-xl" style={{color:'#111'}}>{s.points}</td>
+                    <td className="px-3 py-3 text-center font-bold cp-gold-text">{s.pins}</td>
+                    <td className="px-3 py-3 text-center font-bold text-xl text-white">{s.points}</td>
                   </tr>
                 ))}
               </tbody>
@@ -175,79 +313,58 @@ function StandingsView({ groups, matches }) {
   );
 }
 
-/* ── SCHEDULE PAGE ── */
-function ScheduleView({ matches, groups }) {
+/* SCHEDULE */
+function ScheduleView({ matches }) {
   if (!matches.length) return <Empty message="Schedule not generated yet." />;
-
-  const rounds = [...new Set(matches.map(m => m.round))].sort((a, b) => a - b);
-  const mats   = [...new Set(matches.map(m => m.mat))].sort((a, b) => a - b);
+  const rounds = [...new Set(matches.map(m => m.round))].sort((a,b) => a-b);
+  const mats   = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
   const done   = matches.filter(m => m.winner).length;
-  const pct    = Math.round(done / matches.length * 100);
-
+  const pct    = Math.round(done/matches.length*100);
   const winLabel = m => {
     if (!m.winner) return null;
-    const name = m.winner === m.w1.id ? m.w1.name : m.w2.name;
-    return `${name} — ${m.winType === 'pin' ? 'Pin (6pts)' : 'Points (4pts)'}`;
+    const name = m.winner===m.w1.id?m.w1.name:m.w2.name;
+    return `${name} — ${m.winType==='pin'?'Pin (6pts)':'Points (4pts)'}`;
   };
-
   return (
     <div>
-      {/* Overall progress */}
-      <div className="bg-white rounded-2xl shadow p-4 mb-6">
+      <div className="rounded-2xl p-4 mb-6" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
         <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="font-semibold" style={{color:'#111'}}>Tournament Progress</span>
-          <span className="font-bold" style={{color:'#C9A227'}}>{done} / {matches.length} matches · {pct}%</span>
+          <span className="font-semibold text-gray-300">Tournament Progress</span>
+          <span className="font-bold cp-gold-text">{done} / {matches.length} matches · {pct}%</span>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-3 rounded-full transition-all" style={{width: pct + '%', background: 'linear-gradient(to right,#C9A227,#A8841E)'}} />
+        <div className="h-3 rounded-full overflow-hidden" style={{background:'#333'}}>
+          <div className="h-3 rounded-full transition-all" style={{width:pct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
         </div>
       </div>
-
       {rounds.map(round => (
         <div key={round} className="mb-7">
           <div className="flex items-center gap-3 mb-3">
-            <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>
-              Round {round}
-            </h2>
-            <span className="text-sm text-gray-400">
-              {matches.filter(m => m.round === round && m.winner).length} / {matches.filter(m => m.round === round).length} done
+            <h2 className="font-bold text-lg text-white px-4 py-1.5 rounded-full" style={{background:'#111'}}>Round {round}</h2>
+            <span className="text-sm" style={{color:'#555'}}>
+              {matches.filter(m=>m.round===round&&m.winner).length} / {matches.filter(m=>m.round===round).length} done
             </span>
           </div>
-
-          <div className={`grid gap-4 ${mats.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`grid gap-4 ${mats.length>1?'md:grid-cols-2':'grid-cols-1'}`}>
             {mats.map(mat => {
-              const mm = matches.filter(m => m.round === round && m.mat === mat);
+              const mm = matches.filter(m => m.round===round && m.mat===mat);
               if (!mm.length) return null;
               return (
-                <div key={mat} className="bg-white rounded-2xl shadow p-4">
+                <div key={mat} className="rounded-2xl shadow p-4" style={{background:'#1a1a1a',border:'1px solid #2a2a2a'}}>
                   <div className="mb-3 flex items-center gap-2">
                     <span className="text-white font-bold px-3 py-1 rounded-lg text-sm" style={{background:'#111'}}>Mat {mat}</span>
-                    <span className="text-xs text-gray-400">{mm.filter(m=>m.winner).length}/{mm.length} done</span>
+                    <span className="text-xs" style={{color:'#555'}}>{mm.filter(m=>m.winner).length}/{mm.length} done</span>
                   </div>
                   <div className="space-y-2">
                     {mm.map(m => (
-                      <div key={m.id} className={`px-3 py-3 rounded-xl text-sm ${m.winner ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+                      <div key={m.id} className="px-3 py-3 rounded-xl text-sm" style={{background:m.winner?'#1c1900':'#222'}}>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>
-                            {m.groupLabel}
-                          </span>
-                          <span className={`font-medium flex-1 truncate ${m.winner === m.w1.id ? 'text-green-700' : ''}`}>
-                            {m.w1.name}
-                          </span>
-                          <span className="text-gray-300 font-bold text-xs shrink-0">VS</span>
-                          <span className={`font-medium flex-1 text-right truncate ${m.winner === m.w2.id ? 'text-green-700' : ''}`}>
-                            {m.w2.name}
-                          </span>
-                          {m.winner
-                            ? <span className="text-green-500 shrink-0">✓</span>
-                            : <span className="text-gray-300 text-xs shrink-0">—</span>
-                          }
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
+                          <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-400':'text-white'}`}>{m.w1.name}</span>
+                          <span className="font-bold text-xs shrink-0" style={{color:'#444'}}>VS</span>
+                          <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-400':'text-white'}`}>{m.w2.name}</span>
+                          {m.winner?<span className="text-green-500 shrink-0">✓</span>:<span className="text-xs shrink-0" style={{color:'#444'}}>—</span>}
                         </div>
-                        {m.winner && (
-                          <div className="text-xs mt-1.5 pl-1 font-medium" style={{color:'#A8841E'}}>
-                            🏆 {winLabel(m)}
-                          </div>
-                        )}
+                        {m.winner && <div className="text-xs mt-1.5 pl-1 font-medium cp-gold-text">🏆 {winLabel(m)}</div>}
                       </div>
                     ))}
                   </div>
@@ -261,21 +378,20 @@ function ScheduleView({ matches, groups }) {
   );
 }
 
-/* ── ROOT ── */
+/* ROOT */
 function App() {
-  const [page, setPage]           = useState('standings');
-  const [groups, setGroups]       = useState([]);
-  const [matches, setMatches]     = useState([]);
+  const [page, setPage]               = useState('now');
+  const [groups, setGroups]           = useState([]);
+  const [matches, setMatches]         = useState([]);
   const [lastUpdated, setLastUpdated] = useState('--:--');
 
   function refresh() {
     setGroups(load('groups', []));
     setMatches(load('matches', []));
     const now = new Date();
-    setLastUpdated(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    setLastUpdated(now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
   }
 
-  // Load on mount, then auto-refresh every 15 seconds
   useEffect(() => {
     refresh();
     const interval = setInterval(refresh, 15000);
@@ -283,17 +399,15 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
+    <div className="min-h-screen" style={{background:'#111'}}>
       <Nav page={page} setPage={setPage} lastUpdated={lastUpdated} />
-
-      {/* Read-only banner */}
-      <div className="text-center text-xs py-2 font-medium" style={{background:'#C9A227',color:'#111'}}>
-        👁 View Only — Auto-refreshes every 15 seconds
+      <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
+        👁 VIEW ONLY — Auto-refreshes every 15 seconds
       </div>
-
-      <div className="max-w-5xl mx-auto px-4 py-6 pb-12">
-        {page === 'standings' && <StandingsView groups={groups} matches={matches} />}
-        {page === 'schedule'  && <ScheduleView  groups={groups} matches={matches} />}
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-12">
+        {page==='now'       && <NowWrestlingView matches={matches} />}
+        {page==='standings' && <StandingsView    groups={groups} matches={matches} />}
+        {page==='schedule'  && <ScheduleView     matches={matches} />}
       </div>
     </div>
   );
