@@ -160,8 +160,19 @@ function buildMatches(group){
   return raw.map(m=>({...m,id:uid(),groupId:group.id,groupLabel:group.label,winner:null,winType:null,mat:1}));
 }
 function generateSchedule(groups,numMats){
+  // How many matches each group produces
+  const matchCount=g=>g.wrestlers.length===2?1:g.wrestlers.length===3?3:6;
+
+  // Greedy balancing: assign largest groups first, always to the mat with fewest matches
+  const matLoads=Array.from({length:numMats},(_,i)=>({mat:i+1,total:0}));
   const assign={};
-  groups.forEach((g,i)=>{assign[g.id]=(i%numMats)+1;});
+  const sorted=[...groups].sort((a,b)=>matchCount(b)-matchCount(a));
+  sorted.forEach(g=>{
+    const lightest=matLoads.reduce((min,m)=>m.total<min.total?m:min);
+    assign[g.id]=lightest.mat;
+    lightest.total+=matchCount(g);
+  });
+
   const matches=[];
   groups.forEach(g=>buildMatches(g).forEach(m=>matches.push({...m,mat:assign[g.id]})));
   return matches;
