@@ -164,7 +164,7 @@ function NowWrestlingView({ matches }) {
   const totalDone  = countable.filter(m => m.winner).length;
   const totalPct   = countable.length ? Math.round(totalDone / countable.length * 100) : 0;
 
-  // Pending matches per mat in round order — skip locked BO3 matches
+  // Pending matches per mat — respects array order (set by schedule page)
   function getQueue(mat) {
     return matches
       .filter(m => {
@@ -183,8 +183,8 @@ function NowWrestlingView({ matches }) {
           if (!(bo3.w1Wins === 1 && bo3.w2Wins === 1)) return false; // not tied
         }
         return true;
-      })
-      .sort((a,b) => a.round - b.round);
+      });
+      // No sort — preserves order from schedule page
   }
 
   // Most recently completed match on this mat
@@ -528,7 +528,7 @@ function DisclaimerModal({ onAccept }) {
             <span style={{fontSize:'1.6rem'}}>🐾</span>
             <div>
               <div className="font-black text-white tracking-widest text-lg" style={{letterSpacing:'.1em'}}>CLUB PAW</div>
-              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER WRESTLING CLUB</div>
+              <div className="text-xs font-medium" style={{color:'#C9A227',letterSpacing:'.06em'}}>ROCHESTER CLUB PAW</div>
             </div>
           </div>
           <div className="mt-3 font-bold text-white text-xl">Tournament Viewer</div>
