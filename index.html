@@ -196,6 +196,9 @@ function generateSchedule(groups,numMats){
 
   const matches=[];
   groups.forEach(g=>buildMatches(g).forEach(m=>matches.push({...m,mat:assign[g.id]})));
+  // Sort by round so all Round 1 matches come first, then Round 2, then Round 3
+  // This prevents the same wrestlers appearing back-to-back in consecutive rounds
+  matches.sort((a,b) => a.round - b.round);
   return matches;
 }
 
