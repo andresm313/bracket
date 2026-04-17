@@ -202,6 +202,72 @@ function QueueCard({ m, allMatches, slot }) {
   );
 }
 
+/* ── HISTORY DRAWER ── */
+function HistoryDrawer({ matches, selectedMat, onUndo }) {
+  const [open, setOpen] = useState(false);
+
+  const done = matches
+    .filter(m => m.mat === selectedMat && m.winner)
+    .sort((a,b) => b.round - a.round); // most recent first
+
+  return (
+    <div className="bg-white rounded-2xl shadow overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold"
+        style={{color:'#111'}}
+      >
+        <span className="flex items-center gap-2">
+          <span>📋 Match History — Mat {selectedMat}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{background:'#f3f4f6',color:'#555'}}>
+            {done.length} completed
+          </span>
+        </span>
+        <span style={{color:'#C9A227',fontSize:'1rem'}}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t" style={{borderColor:'#f3f4f6'}}>
+          {done.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-gray-400">No completed matches yet on this mat.</div>
+          ) : (
+            <div className="divide-y" style={{divideColor:'#f9fafb'}}>
+              {done.map((m, i) => {
+                const winnerName = m.winner === m.w1.id ? m.w1.name : m.w2.name;
+                const loserName  = m.winner === m.w1.id ? m.w2.name : m.w1.name;
+                return (
+                  <div key={m.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.58rem'}}>
+                          {m.groupLabel}
+                        </span>
+                        <span className="text-xs text-gray-400">Rnd {m.round}</span>
+                        {m.bo3decider && <span className="text-xs text-green-600 font-semibold">Series Decider</span>}
+                      </div>
+                      <div className="text-sm font-bold text-green-700">🏆 {winnerName}</div>
+                      <div className="text-xs text-gray-400">
+                        def. {loserName} — {m.winType === 'pin' ? 'Pin (6pts)' : 'Points (4pts)'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onUndo(m.id)}
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold border shrink-0 hover:border-red-400 hover:text-red-500 transition-all"
+                      style={{color:'#9ca3af',borderColor:'#e5e7eb',background:'#fafafa'}}
+                    >
+                      Undo
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── MAIN APP ── */
 function App() {
   const [matches, setMatches]         = useState([]);
@@ -385,9 +451,9 @@ function App() {
                   </div>
                 )}
 
-                {/* Last completed */}
+                {/* Last completed — inline summary */}
                 {lastDone && (
-                  <div className="rounded-xl p-3 mt-2" style={{background:'#f0fdf4',border:'1px solid #bbf7d0'}}>
+                  <div className="rounded-xl p-3" style={{background:'#f0fdf4',border:'1px solid #bbf7d0'}}>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span style={{color:'#16a34a',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
                       <span className="ml-auto text-xs text-gray-400">Rnd {lastDone.round}</span>
@@ -405,6 +471,11 @@ function App() {
 
               </div>
             )}
+
+            {/* History drawer — always visible below the queue */}
+            <div className="mt-4">
+              <HistoryDrawer matches={matches} selectedMat={selectedMat} onUndo={undo} />
+            </div>
           </>
         )}
       </div>
