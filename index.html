@@ -1047,25 +1047,38 @@ function App(){
   const [matches,setMatches]=useState([]);
   const [numMats,setNumMats]=useState(2);
 
-  // Load all data from Firebase once on mount
-  useEffect(()=>{
-    db.ref('clubpaw').once('value').then(snap=>{
-      const d=snap.val()||{};
-      setWrestlers(d.wrestlers||[]);
-      setGroups(d.groups||[]);
-      setUnassigned(d.unassigned||[]);
-      setMatches(d.matches||[]);
-      setNumMats(d.numMats||2);
-      setDbReady(true);
-    }).catch(()=>setDbReady(true));
-  },[]);
+  const [localWrite, setLocalWrite] = useState(false);
 
-  // Sync state to Firebase after initial load
-  useEffect(()=>{ if(dbReady) save('wrestlers',wrestlers); },[wrestlers]);
-  useEffect(()=>{ if(dbReady) save('groups',groups); },[groups]);
-  useEffect(()=>{ if(dbReady) save('unassigned',unassigned); },[unassigned]);
-  useEffect(()=>{ if(dbReady) save('matches',matches); },[matches]);
-  useEffect(()=>{ if(dbReady) save('numMats',numMats); },[numMats]);
+  // Real-time listener — loads on mount AND updates whenever any device writes
+  useEffect(()=>{
+    const ref = db.ref('clubpaw');
+    ref.on('value', snap => {
+      // Only update state from Firebase if WE didn't just write it
+      // (prevents overwriting local state mid-edit)
+      if (localWrite) return;
+      const d = snap.val() || {};
+      setWrestlers(d.wrestlers || []);
+      setGroups(d.groups || []);
+      setUnassigned(d.unassigned || []);
+      setMatches(d.matches || []);
+      setNumMats(d.numMats || 2);
+      setDbReady(true);
+    });
+    return () => ref.off('value');
+  }, [localWrite]);
+
+  // Sync state to Firebase — flag localWrite so the listener ignores the echo
+  function saveKey(k, v) {
+    setLocalWrite(true);
+    save(k, v);
+    setTimeout(() => setLocalWrite(false), 1000);
+  }
+
+  useEffect(()=>{ if(dbReady) saveKey('wrestlers',wrestlers); },[wrestlers]);
+  useEffect(()=>{ if(dbReady) saveKey('groups',groups); },[groups]);
+  useEffect(()=>{ if(dbReady) saveKey('unassigned',unassigned); },[unassigned]);
+  useEffect(()=>{ if(dbReady) saveKey('matches',matches); },[matches]);
+  useEffect(()=>{ if(dbReady) saveKey('numMats',numMats); },[numMats]);
 
   if(!dbReady) return(
     <div className="min-h-screen flex items-center justify-center" style={{background:'#f3f4f6'}}>
