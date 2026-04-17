@@ -560,24 +560,33 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
           {/* Side-by-side mat columns */}
           <div className="flex gap-4 overflow-x-auto pb-4" style={{alignItems:'flex-start'}}>
             {allMats.map(mat=>{
-              const matMatchCount=matches.filter(m=>m.mat===mat).length;
-              const matDone=matches.filter(m=>m.mat===mat&&m.winner).length;
-              const isDropTarget=moving&&movingMatch&&movingMatch.mat!==mat;
+              // Flat ordered list for this mat — preserving array order
+              const matMatches = matches
+                .map((m,globalIdx) => ({...m, _globalIdx: globalIdx}))
+                .filter(m => m.mat === mat);
+              const matDone = matMatches.filter(m=>m.winner).length;
+              const isDropTarget = moving && movingMatch && movingMatch.mat !== mat;
+
+              // Swap two matches by their global indices in the matches array
+              function swapMatches(idxA, idxB) {
+                const next = [...matches];
+                [next[idxA], next[idxB]] = [next[idxB], next[idxA]];
+                setMatches(next);
+                setMoving(null);
+              }
 
               return(
                 <div key={mat}
                   onClick={()=>isDropTarget&&moveMatchToMat(moving.matchId,mat)}
                   className={`flex-shrink-0 rounded-2xl overflow-hidden shadow-lg transition-all ${
-                    isDropTarget
-                      ? 'ring-4 ring-yellow-400 cursor-pointer scale-[1.01]'
-                      : ''
+                    isDropTarget ? 'ring-4 ring-yellow-400 cursor-pointer scale-[1.01]' : ''
                   }`}
-                  style={{minWidth:300,width:300,background:'#f8f8f8',border:isDropTarget?'2px solid #C9A227':'2px solid #e5e7eb'}}>
+                  style={{minWidth:310,width:310,background:'#f8f8f8',border:isDropTarget?'2px solid #C9A227':'2px solid #e5e7eb'}}>
 
                   {/* Mat header */}
                   <div className="text-white text-center py-3 px-4 relative" style={{background:'#111'}}>
                     <div className="font-black text-xl tracking-wide">Mat {mat}</div>
-                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matMatchCount} done</div>
+                    <div className="text-xs mt-0.5" style={{color:'#C9A227'}}>{matDone}/{matMatches.length} done</div>
                     {isDropTarget&&(
                       <div className="absolute inset-0 flex items-center justify-center rounded-t-2xl" style={{background:'rgba(201,162,39,0.15)'}}>
                         <span className="font-black text-yellow-400 text-base">↓ Move here</span>
@@ -585,62 +594,75 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
                     )}
                   </div>
 
-                  {/* Rounds within mat */}
-                  <div className="p-3">
-                    {rounds.map(round=>{
-                      const mm=matches.filter(m=>m.round===round&&m.mat===mat);
-                      if(!mm.length)return null;
-                      const rDone=mm.filter(m=>m.winner).length;
+                  {/* Flat ordered match list */}
+                  <div className="p-3 space-y-2">
+                    {matMatches.length === 0 && (
+                      <div className={`text-center text-xs py-8 rounded-xl ${isDropTarget?'text-yellow-600 font-semibold':'text-gray-400'}`}>
+                        {isDropTarget?'↓ Drop match here':'No matches assigned'}
+                      </div>
+                    )}
+                    {matMatches.map((m, matIdx) => {
+                      const isBeingMoved = moving?.matchId === m.id;
+                      const isFirst = matIdx === 0;
+                      const isLast  = matIdx === matMatches.length - 1;
+                      const prevGlobalIdx = isFirst ? null : matMatches[matIdx-1]._globalIdx;
+                      const nextGlobalIdx = isLast  ? null : matMatches[matIdx+1]._globalIdx;
+
                       return(
-                        <div key={round} className="mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-bold text-xs text-white px-3 py-1 rounded-full" style={{background:'#333'}}>Round {round}</span>
-                            <span className="text-xs text-gray-400">{rDone}/{mm.length}</span>
+                        <div key={m.id}
+                          className={`rounded-xl text-sm border-2 transition-all ${
+                            isBeingMoved    ? 'border-yellow-400 bg-yellow-50' :
+                            m.winner        ? 'bg-green-50 border-transparent' :
+                                              'bg-white border-gray-100 shadow-sm'
+                          }`}>
+
+                          {/* Top row: group badge + round badge + action buttons */}
+                          <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
+                            <span className="text-xs text-gray-400 shrink-0">Rnd {m.round}</span>
+                            {!moving && (
+                              <div className="ml-auto flex items-center gap-1">
+                                {/* Up / down within mat */}
+                                <button
+                                  disabled={isFirst}
+                                  onClick={e=>{e.stopPropagation();swapMatches(m._globalIdx, prevGlobalIdx);}}
+                                  title="Move up"
+                                  className="text-xs w-6 h-6 rounded flex items-center justify-center border transition-all disabled:opacity-20"
+                                  style={{color:'#666',borderColor:'#ddd',background:'#fafafa'}}>
+                                  ▲
+                                </button>
+                                <button
+                                  disabled={isLast}
+                                  onClick={e=>{e.stopPropagation();swapMatches(m._globalIdx, nextGlobalIdx);}}
+                                  title="Move down"
+                                  className="text-xs w-6 h-6 rounded flex items-center justify-center border transition-all disabled:opacity-20"
+                                  style={{color:'#666',borderColor:'#ddd',background:'#fafafa'}}>
+                                  ▼
+                                </button>
+                                {/* Move to another mat */}
+                                <button
+                                  onClick={e=>{e.stopPropagation();setMoving({matchId:m.id,fromMat:m.mat});}}
+                                  title="Move to another mat"
+                                  className="text-xs px-1.5 h-6 rounded font-semibold border transition-all hover:border-yellow-400 hover:text-yellow-700"
+                                  style={{color:'#999',borderColor:'#ddd',background:'#fafafa'}}>
+                                  ↔
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <div className="space-y-2">
-                            {mm.map(m=>{
-                              const isBeingMoved=moving?.matchId===m.id;
-                              return(
-                                <div key={m.id}
-                                  className={`px-3 py-2.5 rounded-xl text-sm border-2 transition-all ${
-                                    isBeingMoved
-                                      ? 'border-yellow-400 bg-yellow-50'
-                                      : m.winner
-                                      ? 'bg-green-50 border-transparent'
-                                      : 'bg-white border-gray-100 shadow-sm'
-                                  }`}>
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" style={{background:'#C9A227',color:'#111'}}>{m.groupLabel}</span>
-                                    {/* Move button — moves just this match */}
-                                    {!moving&&(
-                                      <button
-                                        onClick={e=>{e.stopPropagation();setMoving({matchId:m.id,fromMat:m.mat});}}
-                                        title="Move this match to another mat"
-                                        className="ml-auto text-xs px-2 py-0.5 rounded-lg font-semibold border transition-all hover:border-yellow-400 hover:text-yellow-700"
-                                        style={{color:'#999',borderColor:'#ddd',background:'#fafafa'}}>
-                                        ↔ Move
-                                      </button>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
-                                    <span className="text-gray-300 font-bold shrink-0">vs</span>
-                                    <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
-                                    {m.winner?<span className="text-green-500 shrink-0 ml-1">✓</span>:<span className="text-gray-300 shrink-0 ml-1">—</span>}
-                                  </div>
-                                  {m.winner&&<div className="text-xs mt-1 cp-gold-text">🏆 {winLabel(m)}</div>}
-                                </div>
-                              );
-                            })}
+
+                          {/* Wrestler names row */}
+                          <div className="flex items-center gap-1 text-xs px-3 pb-2.5">
+                            <span className={`font-medium flex-1 truncate ${m.winner===m.w1.id?'text-green-700':''}`}>{m.w1.name}</span>
+                            <span className="text-gray-300 font-bold shrink-0">vs</span>
+                            <span className={`font-medium flex-1 text-right truncate ${m.winner===m.w2.id?'text-green-700':''}`}>{m.w2.name}</span>
+                            {m.winner?<span className="text-green-500 shrink-0 ml-1">✓</span>:<span className="text-gray-300 shrink-0 ml-1">—</span>}
                           </div>
+
+                          {m.winner&&<div className="text-xs px-3 pb-2 cp-gold-text">🏆 {winLabel(m)}</div>}
                         </div>
                       );
                     })}
-                    {matMatchCount===0&&(
-                      <div className={`text-center text-xs py-8 rounded-xl ${isDropTarget?'text-yellow-600 font-semibold':'text-gray-400'}`}>
-                        {isDropTarget?'↓ Drop group here':'No matches assigned'}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
