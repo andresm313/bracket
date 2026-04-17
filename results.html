@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club PAW — Scorekeeper</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    :root{--gold:#C9A227;--gold-dk:#A8841E;--black:#111;}
+    body{background:#f3f4f6;margin:0;}
+    .cp-nav{background:#111;}
+    .cp-gold-text{color:var(--gold);}
+    .pin-btn{background:#111;color:#C9A227;border:2px solid #C9A227;border-radius:.5rem;padding:.5rem .75rem;font-weight:700;cursor:pointer;flex:1;transition:background .1s;font-size:.8rem;}
+    .pin-btn:hover,.pin-btn:active{background:#222;}
+    .pts-btn{background:#fff;color:#111;border:2px solid #ddd;border-radius:.5rem;padding:.5rem .75rem;font-weight:700;cursor:pointer;flex:1;transition:all .1s;font-size:.8rem;}
+    .pts-btn:hover,.pts-btn:active{background:#f3f4f6;border-color:#999;}
+    .lbl-now{background:#C9A227;color:#111;font-size:.6rem;font-weight:800;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.1em;text-transform:uppercase;}
+    .lbl-next{background:#e5e7eb;color:#555;font-size:.6rem;font-weight:700;padding:.15rem .55rem;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase;}
+    .lbl-soon{background:#f3f4f6;color:#9ca3af;font-size:.6rem;font-weight:600;padding:.12rem .5rem;border-radius:9999px;text-transform:uppercase;}
+    .vs-pill{background:#e5e7eb;color:#9ca3af;font-size:.7rem;font-weight:800;padding:.15rem .5rem;border-radius:9999px;flex-shrink:0;}
+    .mat-select{background:#C9A227;color:#111;font-weight:800;border:0;border-radius:.75rem;padding:.5rem 1rem;font-size:1rem;cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center;}
+    .now-section{background:#fffbeb;border:2px solid #C9A227;border-radius:1.25rem;padding:1rem;}
+    .up-section{background:#f9fafb;border:1px solid #e5e7eb;border-radius:1rem;padding:.85rem;}
+    .soon-section{background:#f9fafb;border:1px solid #f3f4f6;border-radius:1rem;padding:.75rem;opacity:.85;}
+    .winner-card{background:#fef9e7;border:1.5px solid #C9A227;border-radius:.75rem;padding:.75rem;text-align:center;}
+    .winner-card-green{background:#f0fdf4;border:1.5px solid #86efac;border-radius:.75rem;padding:.75rem;text-align:center;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyB3F1G1cJWZllc_Vr_L49_42sXRQda3RkE",
+  authDomain:        "club-paw-tournament.firebaseapp.com",
+  databaseURL:       "https://club-paw-tournament-default-rtdb.firebaseio.com",
+  projectId:         "club-paw-tournament",
+  storageBucket:     "club-paw-tournament.firebasestorage.app",
+  messagingSenderId: "372778383531",
+  appId:             "1:372778383531:web:0f75a2732e57429b485fee"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ── BO3 HELPER ── */
+function getBO3State(groupId, matches) {
+  const gm = matches.filter(m => m.groupId === groupId && m.bo3).sort((a,b) => a.round - b.round);
+  if (!gm.length) return null;
+  const m1=gm[0], m2=gm[1], m3=gm[2];
+  const w1Id=m1.w1.id, w2Id=m1.w2.id;
+  let w1Wins=0, w2Wins=0;
+  if(m1?.winner){if(m1.winner===w1Id)w1Wins++;else w2Wins++;}
+  if(m2?.winner){if(m2.winner===w1Id)w1Wins++;else w2Wins++;}
+  if(m3?.winner){if(m3.winner===w1Id)w1Wins++;else w2Wins++;}
+  const seriesOver=w1Wins===2||w2Wins===2;
+  const seriesWinnerId=w1Wins===2?w1Id:w2Wins===2?w2Id:null;
+  return{w1Wins,w2Wins,m1,m2,m3,seriesOver,seriesWinnerId,w1Id,w2Id};
+}
+
+function countableMatches(matches) {
+  return matches.filter(m => {
+    if (!m.bo3decider) return true;
+    if (m.winner) return true;
+    const bo3 = getBO3State(m.groupId, matches);
+    if (!bo3) return true;
+    return bo3.m1?.winner && bo3.m2?.winner && bo3.w1Wins===1 && bo3.w2Wins===1;
+  });
+}
+
+/* ── QUEUE (same logic as viewer) ── */
+function getQueue(mat, matches) {
+  return matches.filter(m => {
+    if (m.mat !== mat || m.winner) return false;
+    if (m.bo3 && m.round === 2) {
+      const bo3 = getBO3State(m.groupId, matches);
+      if (bo3 && !bo3.m1?.winner) return false;
+    }
+    if (m.bo3decider) {
+      const bo3 = getBO3State(m.groupId, matches);
+      if (!bo3 || bo3.seriesOver) return false;
+      if (!bo3.m1?.winner || !bo3.m2?.winner) return false;
+      if (!(bo3.w1Wins===1 && bo3.w2Wins===1)) return false;
+    }
+    return true;
+  }).sort((a,b) => a.round - b.round);
+}
+
+/* ── MATCH ENTRY CARD ── */
+function MatchEntryCard({ m, allMatches, onPick, onUndo, isOnMat }) {
+  const bo3State = m.bo3 ? getBO3State(m.groupId, allMatches) : null;
+  const wName = m.winner ? (m.winner===m.w1.id ? m.w1.name : m.w2.name) : null;
+  const isDecider = m.bo3decider;
+
+  return (
+    <div className={isOnMat ? 'now-section' : 'up-section'} style={{marginBottom:'0'}}>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        {isOnMat
+          ? <span className="lbl-now">On Mat Now</span>
+          : <span className="lbl-next">Up Next</span>
+        }
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.65rem'}}>
+          Group {m.groupLabel}
+        </span>
+        {m.bo3 && bo3State && (
+          <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+            style={{background:isDecider?'#dcfce7':'#f3f4f6',color:isDecider?'#166534':'#6b7280',fontSize:'.6rem'}}>
+            {isDecider ? '🏆 M3' : `M${m.round}`} · {bo3State.w1Wins}-{bo3State.w2Wins}
+          </span>
+        )}
+        <span className="ml-auto text-xs text-gray-400">Rnd {m.round}</span>
+        {m.winner && (
+          <button onClick={() => onUndo(m.id)}
+            className="text-xs text-gray-400 hover:text-red-500 underline ml-1">Undo</button>
+        )}
+      </div>
+
+      {m.winner ? (
+        <div className={isDecider ? 'winner-card-green' : 'winner-card'}>
+          <div className="font-bold text-base">🏆 {wName}</div>
+          <div className="text-xs mt-0.5" style={{color:isDecider?'#16a34a':'#C9A227'}}>
+            {isDecider ? 'Series Winner — ' : ''}{m.winType==='pin'?'Pin — 6 pts':'Points — 4 pts'}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {[m.w1, m.w2].map(wrestler => (
+            <div key={wrestler.id} className="bg-white rounded-xl p-3 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="font-bold text-sm">{wrestler.name}</div>
+                  <div className="text-xs text-gray-400">{wrestler.weight}lbs · {wrestler.experience} · Age {wrestler.age}</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => onPick(m.id, wrestler.id, 'pin')} className="pin-btn">
+                  📌 Pin (6 pts)
+                </button>
+                <button onClick={() => onPick(m.id, wrestler.id, 'points')} className="pts-btn">
+                  ✓ Points (4 pts)
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── QUEUE PREVIEW CARD (no entry, just display) ── */
+function QueueCard({ m, allMatches, slot }) {
+  const bo3State = m.bo3 ? getBO3State(m.groupId, allMatches) : null;
+  const lblCls = slot === 1 ? 'lbl-next' : 'lbl-soon';
+  const lblTxt = slot === 1 ? 'After Next' : 'Coming Up';
+  return (
+    <div className="soon-section">
+      <div className="flex items-center gap-2 mb-2">
+        <span className={lblCls}>{lblTxt}</span>
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:'#C9A227',color:'#111',fontSize:'.6rem'}}>
+          {m.groupLabel}
+        </span>
+        {m.bo3 && bo3State && (
+          <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+            style={{background:'#f3f4f6',color:'#6b7280',fontSize:'.58rem'}}>
+            M{m.round} · {bo3State.w1Wins}-{bo3State.w2Wins}
+          </span>
+        )}
+        <span className="ml-auto text-xs text-gray-400">Rnd {m.round}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm truncate">{m.w1.name}</div>
+          <div className="text-xs text-gray-400">{m.w1.weight}lbs · Age {m.w1.age}</div>
+        </div>
+        <span className="vs-pill">VS</span>
+        <div className="flex-1 min-w-0 text-right">
+          <div className="font-semibold text-sm truncate">{m.w2.name}</div>
+          <div className="text-xs text-gray-400">{m.w2.weight}lbs · Age {m.w2.age}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── MAIN APP ── */
+function App() {
+  const [matches, setMatches]         = useState([]);
+  const [selectedMat, setSelectedMat] = useState(1);
+  const [lastUpdated, setLastUpdated] = useState('Connecting...');
+  const [saving, setSaving]           = useState(false);
+
+  /* Real-time Firebase listener */
+  useEffect(() => {
+    const ref = db.ref('clubpaw/matches');
+    ref.on('value', snap => {
+      const d = snap.val();
+      setMatches(Array.isArray(d) ? d : d ? Object.values(d) : []);
+      const now = new Date();
+      setLastUpdated(now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    });
+    return () => ref.off('value');
+  }, []);
+
+  function saveMatches(updated) {
+    setSaving(true);
+    db.ref('clubpaw/matches').set(updated).finally(() => setSaving(false));
+  }
+
+  function pick(matchId, winnerId, winType) {
+    const updated = matches.map(m => m.id===matchId ? {...m, winner:winnerId, winType} : m);
+    setMatches(updated);
+    saveMatches(updated);
+  }
+
+  function undo(matchId) {
+    const updated = matches.map(m => m.id===matchId ? {...m, winner:null, winType:null} : m);
+    setMatches(updated);
+    saveMatches(updated);
+  }
+
+  const mats = [...new Set(matches.map(m => m.mat))].sort((a,b) => a-b);
+
+  // Ensure selectedMat is valid
+  useEffect(() => {
+    if (mats.length && !mats.includes(selectedMat)) setSelectedMat(mats[0]);
+  }, [mats.join(',')]);
+
+  const countable   = countableMatches(matches);
+  const totalDone   = countable.filter(m => m.winner).length;
+  const totalPct    = countable.length ? Math.round(totalDone/countable.length*100) : 0;
+
+  const matCountable = countable.filter(m => m.mat===selectedMat);
+  const matDone      = matCountable.filter(m => m.winner).length;
+  const matTotal     = matCountable.length;
+  const matPct       = matTotal ? Math.round(matDone/matTotal*100) : 0;
+
+  const queue = getQueue(selectedMat, matches);
+  const activeMatch   = queue[0] || null;   // On mat now (first pending)
+  const upNextMatch   = queue[1] || null;   // Up next
+  const previewQueue  = queue.slice(2, 5);  // After next + coming up
+
+  // Last completed match on this mat
+  const lastDone = matches
+    .filter(m => m.mat===selectedMat && m.winner)
+    .sort((a,b) => b.round - a.round)[0] || null;
+
+  const allMatDone = matTotal > 0 && matDone === matTotal;
+
+  return (
+    <div className="min-h-screen" style={{background:'#f3f4f6'}}>
+
+      {/* Nav */}
+      <nav className="cp-nav shadow-xl sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold cp-gold-text text-base tracking-widest">🐾 CLUB PAW</div>
+            <div className="text-xs text-gray-500">Scorekeeper View</div>
+          </div>
+          <div className="flex items-center gap-2 text-xs" style={{color:'#555'}}>
+            {saving && <span className="cp-gold-text text-xs animate-pulse">Saving…</span>}
+            <span className="w-2 h-2 rounded-full" style={{background:'#C9A227'}}></span>
+            <span className="text-gray-500">{lastUpdated}</span>
+          </div>
+        </div>
+      </nav>
+
+      {/* Gold bar */}
+      <div className="text-center text-xs py-1.5 font-semibold tracking-wide" style={{background:'#C9A227',color:'#111'}}>
+        ✏️ SCOREKEEPER — Tap a winner to record results
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 py-5 pb-12">
+
+        {matches.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow p-12 text-center mt-8">
+            <div className="text-5xl mb-4">🐾</div>
+            <p className="font-medium text-gray-500">No schedule generated yet.</p>
+            <p className="text-xs mt-2 text-gray-400">Generate a schedule in the main app first.</p>
+          </div>
+        ) : (
+          <>
+            {/* Mat selector */}
+            <div className="bg-white rounded-2xl shadow p-4 mb-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Select Mat</label>
+                  <div className="relative inline-block w-full">
+                    <select
+                      value={selectedMat}
+                      onChange={e => setSelectedMat(parseInt(e.target.value))}
+                      className="mat-select w-full pr-8"
+                    >
+                      {mats.map(m => <option key={m} value={m}>Mat {m}</option>)}
+                    </select>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-sm">▾</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-gray-400 mb-0.5">This mat</div>
+                  <div className="font-bold text-lg" style={{color:'#C9A227'}}>{matDone}/{matTotal}</div>
+                  <div className="text-xs text-gray-400">{matPct}% done</div>
+                </div>
+              </div>
+              {/* Mat progress bar */}
+              <div className="mt-3 h-2 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
+                <div className="h-2 rounded-full transition-all" style={{width:matPct+'%',background:'linear-gradient(to right,#C9A227,#A8841E)'}}/>
+              </div>
+            </div>
+
+            {/* Overall progress */}
+            <div className="bg-white rounded-2xl shadow px-4 py-3 mb-4 flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <div className="text-xs text-gray-400 mb-1">Tournament overall</div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{background:'#e5e7eb'}}>
+                  <div className="h-1.5 rounded-full transition-all" style={{width:totalPct+'%',background:'#C9A227'}}/>
+                </div>
+              </div>
+              <div className="text-sm font-bold cp-gold-text shrink-0">{totalDone}/{countable.length} · {totalPct}%</div>
+            </div>
+
+            {/* Mat content */}
+            {allMatDone ? (
+              <div className="bg-white rounded-2xl shadow p-12 text-center">
+                <div className="text-4xl mb-3">✅</div>
+                <p className="font-bold text-green-600 text-lg">All matches complete on Mat {selectedMat}!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+
+                {/* Active / on mat now */}
+                {activeMatch && (
+                  <MatchEntryCard
+                    m={activeMatch}
+                    allMatches={matches}
+                    onPick={pick}
+                    onUndo={undo}
+                    isOnMat={true}
+                  />
+                )}
+
+                {/* Up next — also enterable */}
+                {upNextMatch && (
+                  <MatchEntryCard
+                    m={upNextMatch}
+                    allMatches={matches}
+                    onPick={pick}
+                    onUndo={undo}
+                    isOnMat={false}
+                  />
+                )}
+
+                {/* Preview queue */}
+                {previewQueue.length > 0 && (
+                  <div className="space-y-2">
+                    {previewQueue.map((m, i) => (
+                      <QueueCard key={m.id} m={m} allMatches={matches} slot={i} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Last completed */}
+                {lastDone && (
+                  <div className="rounded-xl p-3 mt-2" style={{background:'#f0fdf4',border:'1px solid #bbf7d0'}}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span style={{color:'#16a34a',fontSize:'.62rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em'}}>✓ Just Finished</span>
+                      <span className="ml-auto text-xs text-gray-400">Rnd {lastDone.round}</span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <span className={lastDone.winner===lastDone.w1.id?'font-bold text-green-700':''}>{lastDone.w1.name}</span>
+                      <span className="mx-2 text-gray-300">vs</span>
+                      <span className={lastDone.winner===lastDone.w2.id?'font-bold text-green-700':''}>{lastDone.w2.name}</span>
+                    </div>
+                    <div className="text-xs mt-1" style={{color:'#C9A227'}}>
+                      🏆 {lastDone.winner===lastDone.w1.id?lastDone.w1.name:lastDone.w2.name} — {lastDone.winType==='pin'?'Pin (6pts)':'Points (4pts)'}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
