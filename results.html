@@ -73,7 +73,7 @@ function countableMatches(matches) {
   });
 }
 
-/* ── QUEUE (same logic as viewer) ── */
+/* ── QUEUE — respects array order (matches schedule page ordering) ── */
 function getQueue(mat, matches) {
   return matches.filter(m => {
     if (m.mat !== mat || m.winner) return false;
@@ -88,7 +88,8 @@ function getQueue(mat, matches) {
       if (!(bo3.w1Wins===1 && bo3.w2Wins===1)) return false;
     }
     return true;
-  }).sort((a,b) => a.round - b.round);
+  });
+  // No sort — preserves the order set in the schedule page
 }
 
 /* ── MATCH ENTRY CARD ── */
