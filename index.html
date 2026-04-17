@@ -602,14 +602,25 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
                       </div>
                     )}
                     {matMatches.map((m, matIdx) => {
+                      const prevM = matIdx > 0 ? matMatches[matIdx-1] : null;
+                      const showRoundHeader = !prevM || prevM.round !== m.round;
                       const isBeingMoved = moving?.matchId === m.id;
                       const isFirst = matIdx === 0;
                       const isLast  = matIdx === matMatches.length - 1;
                       const prevGlobalIdx = isFirst ? null : matMatches[matIdx-1]._globalIdx;
                       const nextGlobalIdx = isLast  ? null : matMatches[matIdx+1]._globalIdx;
 
+                      const rDoneCount = matMatches.filter(x=>x.round===m.round&&x.winner).length;
+                      const rTotalCount = matMatches.filter(x=>x.round===m.round).length;
                       return(
-                        <div key={m.id}
+                        <div key={m.id}>
+                          {showRoundHeader && (
+                            <div className="flex items-center gap-2 mb-1 mt-2 first:mt-0">
+                              <span className="font-bold text-xs text-white px-3 py-1 rounded-full" style={{background:'#333'}}>Round {m.round}</span>
+                              <span className="text-xs text-gray-400">{rDoneCount}/{rTotalCount}</span>
+                            </div>
+                          )}
+                        <div
                           className={`rounded-xl text-sm border-2 transition-all ${
                             isBeingMoved    ? 'border-yellow-400 bg-yellow-50' :
                             m.winner        ? 'bg-green-50 border-transparent' :
@@ -660,6 +671,7 @@ function SchedulePage({groups,numMats,setNumMats,matches,setMatches}){
                           </div>
 
                           {m.winner&&<div className="text-xs px-3 pb-2 cp-gold-text">🏆 {winLabel(m)}</div>}
+                        </div>
                         </div>
                       );
                     })}
