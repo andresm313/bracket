@@ -188,11 +188,15 @@ function NowWrestlingView({ matches }) {
   }
 
   // Most recently completed match on this mat
+  // Uses array position (schedule order) as a proxy for completion recency
+  // The last match in array order that has a winner is the one most recently run
   function getLastDone(mat) {
-    const done = matches
-      .filter(m => m.mat === mat && m.winner)
-      .sort((a,b) => b.round - a.round);
-    return done[0] || null;
+    const allForMat = matches
+      .map((m, idx) => ({ ...m, _idx: idx }))
+      .filter(m => m.mat === mat && m.winner);
+    if (!allForMat.length) return null;
+    // Return the one with the highest array index (latest in schedule = most recently completed)
+    return allForMat.reduce((latest, m) => m._idx > latest._idx ? m : latest);
   }
 
   const SLOTS = [
