@@ -216,9 +216,11 @@ function QueueCard({ m, allMatches, slot, onMoveUp, onMoveDown, isFirst, isLast 
 function HistoryDrawer({ matches, selectedMat, onUndo }) {
   const [open, setOpen] = useState(false);
 
+  // Sort by position in matches array descending — last scheduled = most recently completed
   const done = matches
+    .map((m, idx) => ({ ...m, _idx: idx }))
     .filter(m => m.mat === selectedMat && m.winner)
-    .sort((a,b) => b.round - a.round); // most recent first
+    .sort((a, b) => b._idx - a._idx);
 
   return (
     <div className="bg-white rounded-2xl shadow overflow-hidden">
@@ -346,10 +348,14 @@ function App() {
   const upNextMatch   = queue[1] || null;   // Up next
   const previewQueue  = queue.slice(2, 5);  // After next + coming up
 
-  // Last completed match on this mat
-  const lastDone = matches
-    .filter(m => m.mat===selectedMat && m.winner)
-    .sort((a,b) => b.round - a.round)[0] || null;
+  // Last completed match on this mat — use array position, not round number
+  const lastDone = (() => {
+    const done = matches
+      .map((m, idx) => ({ ...m, _idx: idx }))
+      .filter(m => m.mat === selectedMat && m.winner);
+    if (!done.length) return null;
+    return done.reduce((latest, m) => m._idx > latest._idx ? m : latest);
+  })();
 
   const allMatDone = matTotal > 0 && matDone === matTotal;
 
