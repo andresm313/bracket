@@ -7,6 +7,11 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    Babel.registerPreset('react-classic', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]]
+    });
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -33,7 +38,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react-classic">
 const { useState, useEffect } = React;
 
 const firebaseConfig = {
@@ -286,22 +291,36 @@ function App() {
   const [selectedMat, setSelectedMat] = useState(1);
   const [lastUpdated, setLastUpdated] = useState('Connecting...');
   const [saving, setSaving]           = useState(false);
+  const [dbError, setDbError]         = useState(null);
 
   /* Real-time Firebase listener */
   useEffect(() => {
     const ref = db.ref('clubpaw/matches');
-    ref.on('value', snap => {
+    const handleValue = snap => {
       const d = snap.val();
       setMatches(Array.isArray(d) ? d : d ? Object.values(d) : []);
       const now = new Date();
       setLastUpdated(now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
-    });
-    return () => ref.off('value');
+      setDbError(null);
+    };
+    const handleError = error => {
+      console.error('Firebase read failed:', error);
+      setDbError(error);
+      setLastUpdated('Firebase error');
+    };
+    ref.on('value', handleValue, handleError);
+    return () => ref.off('value', handleValue);
   }, []);
 
   function saveMatches(updated) {
     setSaving(true);
-    db.ref('clubpaw/matches').set(updated).finally(() => setSaving(false));
+    db.ref('clubpaw/matches').set(updated)
+      .then(() => setDbError(null))
+      .catch(error => {
+        console.error('Firebase save failed:', error);
+        setDbError(error);
+      })
+      .finally(() => setSaving(false));
   }
 
   function pick(matchId, winnerId, winType) {
@@ -390,6 +409,14 @@ function App() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-12">
+        {dbError && (
+          <div className="bg-red-50 border-2 border-red-300 text-red-800 rounded-xl p-4 mb-4">
+            <p className="font-bold">Firebase connection problem</p>
+            <p className="text-sm mt-1">
+              {dbError.message || 'Check the Realtime Database URL and Rules tab in Firebase.'}
+            </p>
+          </div>
+        )}
 
         {matches.length === 0 ? (
           <div className="bg-white rounded-2xl shadow p-12 text-center mt-8">
