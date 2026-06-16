@@ -7,6 +7,11 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    Babel.registerPreset('react-classic', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]]
+    });
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -54,7 +59,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react-classic">
 const { useState, useEffect } = React;
 
 // ─── FIREBASE CONFIG ── paste the SAME config as index.html ──────────────────
@@ -588,18 +593,26 @@ function App() {
   const [groups, setGroups]           = useState([]);
   const [matches, setMatches]         = useState([]);
   const [lastUpdated, setLastUpdated] = useState('Connecting...');
+  const [dbError, setDbError]         = useState(null);
 
   useEffect(() => {
     // Real-time listener — updates instantly when admin enters results
     const ref = db.ref('clubpaw');
-    ref.on('value', snap => {
+    const handleValue = snap => {
       const d = snap.val() || {};
       setGroups(d.groups || []);
       setMatches(d.matches || []);
       const now = new Date();
       setLastUpdated(now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
-    });
-    return () => ref.off('value'); // cleanup on unmount
+      setDbError(null);
+    };
+    const handleError = error => {
+      console.error('Firebase read failed:', error);
+      setDbError(error);
+      setLastUpdated('Firebase error');
+    };
+    ref.on('value', handleValue, handleError);
+    return () => ref.off('value', handleValue); // cleanup on unmount
   }, []);
 
   return (
@@ -613,6 +626,14 @@ function App() {
         👁 VIEW ONLY — Updates in real-time
       </div>
       <div className="max-w-7xl mx-auto px-4 py-6 pb-12">
+        {dbError && (
+          <div className="bg-red-50 border-2 border-red-300 text-red-800 rounded-xl p-4 mb-4 max-w-2xl mx-auto">
+            <p className="font-bold">Firebase connection problem</p>
+            <p className="text-sm mt-1">
+              {dbError.message || 'Check the Realtime Database URL and Rules tab in Firebase.'}
+            </p>
+          </div>
+        )}
         {page==='now'       && <NowWrestlingView matches={matches} />}
         {page==='standings' && <StandingsView    groups={groups} matches={matches} />}
         {page==='schedule'  && <ScheduleView     matches={matches} />}
