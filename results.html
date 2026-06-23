@@ -53,7 +53,10 @@ const firebaseConfig = {
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-
+firebase.auth().signInAnonymously()
+  .catch(error => {
+    console.error('Anonymous sign-in failed:', error);
+  });
 /* ── BO3 HELPER ── */
 function getBO3State(groupId, matches) {
   const gm = matches.filter(m => m.groupId === groupId && m.bo3).sort((a,b) => a.round - b.round);
