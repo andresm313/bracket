@@ -67,6 +67,10 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+ firebase.auth().signInAnonymously()
+  .catch(error => {
+    console.error('Anonymous sign-in failed:', error);
+  }); 
 const dbRef = k => db.ref('clubpaw/' + k);
 // ─────────────────────────────────────────────────────────────────────────────
 
